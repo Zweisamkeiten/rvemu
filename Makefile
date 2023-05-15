@@ -18,6 +18,7 @@ CFLAGS := $(INCLUDES) $(CFLAGS)
 
 # compile macros
 TARGET_NAME := rvemu
+RUN := $(TARGET_NAME)
 TARGET := $(BIN_PATH)/$(TARGET_NAME)
 TARGET_DEBUG := $(DBG_PATH)/$(TARGET_NAME)
 
@@ -29,7 +30,8 @@ OBJ_DEBUG := $(addprefix $(DBG_PATH)/, $(addsuffix .o, $(notdir $(basename $(SRC
 # clean files list
 DISTCLEAN_LIST := $(OBJ) \
                   $(OBJ_DEBUG)
-CLEAN_LIST := $(TARGET) \
+CLEAN_LIST := $(RUN) \
+				$(TARGET) \
 			  $(TARGET_DEBUG) \
 			  $(DISTCLEAN_LIST)
 
@@ -39,6 +41,7 @@ default: makedir all
 # non-phony targets
 $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) $(LINKLIB) -o $@ $(OBJ)
+	cp $@ $(WORK_DIR)
 
 $(OBJ_PATH)/%.o: $(SRC_PATH)/%.c*
 	@echo + CC $<
@@ -55,7 +58,7 @@ $(TARGET_DEBUG): $(OBJ_DEBUG)
 	@echo + LD $@
 	$(CC) $(CFLAGS) $(DBGFLAGS) $(OBJ_DEBUG) -o $@
 
-MAIN_EXEC := $(TARGET)
+MAIN_EXEC := $(RUN)
 
 # phony rules
 .PHONY: makedir

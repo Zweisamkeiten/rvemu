@@ -1,9 +1,13 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include "rvemu.h"
 
 int main(int argc, char *argv[]) {
 
-  printf("Hello, world!\n");
+  Assert(argc > 1, "Usage: ./rvemu ./playground/a.out");
+
+  machine_t machine;
+  machine_load_program(&machine, argv[1]);
+
+  printf("entry: %lx\n", machine.mmu.entry);
 
   return EXIT_SUCCESS;
 }
