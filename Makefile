@@ -1,0 +1,84 @@
+# tool macros
+CC := clang
+CFLAGS := -O3 -Wall -Werror
+LINKLIB := -lm
+DBGFLAGS := -g
+
+# path macros
+BIN_PATH := bin
+OBJ_PATH := obj
+SRC_PATH := src
+DBG_PATH := debug
+
+WORK_DIR  = $(shell pwd)
+
+INC_PATH := $(WORK_DIR)/include $(INC_PATH)
+INCLUDES = $(addprefix -I, $(INC_PATH))
+CFLAGS := $(INCLUDES) $(CFLAGS)
+
+# compile macros
+TARGET_NAME := rvemu
+TARGET := $(BIN_PATH)/$(TARGET_NAME)
+TARGET_DEBUG := $(DBG_PATH)/$(TARGET_NAME)
+
+# src files & obj files
+SRC := $(foreach x, $(SRC_PATH), $(wildcard $(addprefix $(x)/*,.c*)))
+OBJ := $(addprefix $(OBJ_PATH)/, $(addsuffix .o, $(notdir $(basename $(SRC)))))
+OBJ_DEBUG := $(addprefix $(DBG_PATH)/, $(addsuffix .o, $(notdir $(basename $(SRC)))))
+
+# clean files list
+DISTCLEAN_LIST := $(OBJ) \
+                  $(OBJ_DEBUG)
+CLEAN_LIST := $(TARGET) \
+			  $(TARGET_DEBUG) \
+			  $(DISTCLEAN_LIST)
+
+# default rule
+default: makedir all
+
+# non-phony targets
+$(TARGET): $(OBJ)
+	$(CC) $(CFLAGS) $(LINKLIB) -o $@ $(OBJ)
+
+$(OBJ_PATH)/%.o: $(SRC_PATH)/%.c*
+	@echo + CC $<
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(DBG_PATH)/%.o: $(SRC_PATH)/%.c*
+	@echo + CC $<
+	$(CC) $(CFLAGS) $(DBGFLAGS) -o $@ $<
+	$(CC) -E $(INCLUDES) $< | \
+		grep -ve '^#' | \
+		clang-format - > $(basename $@).i
+
+$(TARGET_DEBUG): $(OBJ_DEBUG)
+	@echo + LD $@
+	$(CC) $(CFLAGS) $(DBGFLAGS) $(OBJ_DEBUG) -o $@
+
+MAIN_EXEC := $(TARGET)
+
+# phony rules
+.PHONY: makedir
+makedir:
+	@mkdir -p $(BIN_PATH) $(OBJ_PATH) $(DBG_PATH)
+
+.PHONY: all
+all: $(TARGET)
+
+.PHONY: run
+run: all
+	$(MAIN_EXEC)
+
+.PHONY: debug
+debug: $(TARGET_DEBUG)
+	gdb $(TARGET_DEBUG)
+
+.PHONY: clean
+clean:
+	@echo CLEAN $(CLEAN_LIST)
+	@rm -f $(CLEAN_LIST)
+
+.PHONY: distclean
+distclean:
+	@echo CLEAN $(CLEAN_LIST)
+	@rm -f $(DISTCLEAN_LIST)
