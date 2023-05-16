@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,6 +19,7 @@
            __VA_ARGS__),                                                       \
    exit(1))
 #define fatal(msg) fatalf("%s", msg)
+#define unreachable() (fatal("unreachable"), __builtin_unreachable())
 
 #define Assert(cond, format, ...)                                              \
   do {                                                                         \
@@ -27,6 +29,8 @@
           assert(cond);                                                        \
     }                                                                          \
   } while (0)
+
+#define panic(format, ...) Assert(0, format, ##__VA_ARGS__)
 
 #define ROUNDDOWN(x, k) ((x) & -(k))
 #define ROUNDUP(x, k) (((x) + (k)-1) & -(k))

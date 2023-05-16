@@ -7,8 +7,10 @@ int main(int argc, char *argv[]) {
   machine_t machine;
   machine_load_program(&machine, argv[1]);
 
-  printf("entry: %llx\n", GUEST_TO_HOST(machine.mmu.entry));
-  printf("host_alloc: %lx\n", machine.mmu.host_alloc);
+  while (true) {
+    enum exit_reason_t reason = machine_step(&machine);
+    Assert(reason == ecall, "exit reason is not ecall");
+  }
 
   return EXIT_SUCCESS;
 }
