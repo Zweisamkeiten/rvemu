@@ -18,8 +18,8 @@ CFLAGS := $(INCLUDES) $(CFLAGS)
 
 # compile macros
 TARGET_NAME := rvemu
-RUN := $(TARGET_NAME)
-RUN_DEBUG := $(TARGET_NAME)_debug
+RUN := $(WORK_DIR)/$(TARGET_NAME)
+RUN_DEBUG := $(WORK_DIR)/$(TARGET_NAME)_debug
 TARGET := $(BIN_PATH)/$(TARGET_NAME)
 TARGET_DEBUG := $(DBG_PATH)/$(TARGET_NAME)
 
@@ -43,7 +43,7 @@ default: makedir all
 # non-phony targets
 $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) $(LINKLIB) -o $@ $(OBJ)
-	cp $@ $(WORK_DIR)
+	cp $@ $(RUN)
 
 $(OBJ_PATH)/%.o: $(SRC_PATH)/%.c*
 	@echo + CC $<
@@ -59,9 +59,10 @@ $(DBG_PATH)/%.o: $(SRC_PATH)/%.c*
 $(TARGET_DEBUG): $(OBJ_DEBUG)
 	@echo + LD $@
 	$(CC) $(CFLAGS) $(DBGFLAGS) $(OBJ_DEBUG) -o $@
-	cp $@ $(WORK_DIR)/$(RUN_DEBUG)
+	cp $@ $(RUN_DEBUG)
 
 MAIN_EXEC := $(RUN)
+ARGS :=
 DEBUG_EXEC := $(RUN_DEBUG)
 
 # phony rules
@@ -74,11 +75,11 @@ all: $(TARGET)
 
 .PHONY: run
 run: all
-	$(MAIN_EXEC)
+	$(MAIN_EXEC) $(ARGS)
 
 .PHONY: debug
 debug: $(TARGET_DEBUG)
-	gdb $(DEBUG_EXEC)
+	gdb $(DEBUG_EXEC) --args $(DEBUG_EXEC) $(ARGS)
 
 .PHONY: clean
 clean:
