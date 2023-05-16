@@ -8,6 +8,9 @@
  */
 typedef struct {
   uint64_t entry;
+  uint64_t host_alloc;
+  uint64_t alloc;
+  uint64_t base;
 } mmu_t;
 
 /*

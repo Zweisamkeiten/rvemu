@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <unistd.h>
 
 #include "utils.h"
@@ -26,5 +27,15 @@
           assert(cond);                                                        \
     }                                                                          \
   } while (0)
+
+#define ROUNDDOWN(x, k) ((x) & -(k))
+#define ROUNDUP(x, k) (((x) + (k)-1) & -(k))
+#define MIN(x, y) ((y) > (x) ? (x) : (y))
+#define MAX(x, y) ((y) < (x) ? (x) : (y))
+
+#define GUEST_MEMORY_OFFSET 0x088800000000ULL
+
+#define GUEST_TO_HOST(addr) (addr + GUEST_MEMORY_OFFSET)
+#define HOST_TO_GUEST(addr) (addr - GUEST_MEMORY_OFFSET)
 
 #endif
