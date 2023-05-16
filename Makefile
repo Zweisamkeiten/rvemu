@@ -2,7 +2,7 @@
 CC := clang
 CFLAGS := -O3 -Wall -Werror
 LINKLIB := -lm
-DBGFLAGS := -g
+DBGFLAGS := -g -fsanitize=address
 
 # path macros
 BIN_PATH := bin
@@ -19,6 +19,7 @@ CFLAGS := $(INCLUDES) $(CFLAGS)
 # compile macros
 TARGET_NAME := rvemu
 RUN := $(TARGET_NAME)
+RUN_DEBUG := $(TARGET_NAME)_debug
 TARGET := $(BIN_PATH)/$(TARGET_NAME)
 TARGET_DEBUG := $(DBG_PATH)/$(TARGET_NAME)
 
@@ -31,6 +32,7 @@ OBJ_DEBUG := $(addprefix $(DBG_PATH)/, $(addsuffix .o, $(notdir $(basename $(SRC
 DISTCLEAN_LIST := $(OBJ) \
                   $(OBJ_DEBUG)
 CLEAN_LIST := $(RUN) \
+				$(RUN_DEBUG) \
 				$(TARGET) \
 			  $(TARGET_DEBUG) \
 			  $(DISTCLEAN_LIST)
@@ -49,7 +51,7 @@ $(OBJ_PATH)/%.o: $(SRC_PATH)/%.c*
 
 $(DBG_PATH)/%.o: $(SRC_PATH)/%.c*
 	@echo + CC $<
-	$(CC) $(CFLAGS) $(DBGFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) -c $(DBGFLAGS) -o $@ $<
 	$(CC) -E $(INCLUDES) $< | \
 		grep -ve '^#' | \
 		clang-format - > $(basename $@).i
@@ -57,8 +59,10 @@ $(DBG_PATH)/%.o: $(SRC_PATH)/%.c*
 $(TARGET_DEBUG): $(OBJ_DEBUG)
 	@echo + LD $@
 	$(CC) $(CFLAGS) $(DBGFLAGS) $(OBJ_DEBUG) -o $@
+	cp $@ $(WORK_DIR)/$(RUN_DEBUG)
 
 MAIN_EXEC := $(RUN)
+DEBUG_EXEC := $(RUN_DEBUG)
 
 # phony rules
 .PHONY: makedir
@@ -74,7 +78,7 @@ run: all
 
 .PHONY: debug
 debug: $(TARGET_DEBUG)
-	gdb $(TARGET_DEBUG)
+	gdb $(DEBUG_EXEC)
 
 .PHONY: clean
 clean:
