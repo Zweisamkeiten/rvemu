@@ -77,6 +77,13 @@ all: $(TARGET)
 run: all
 	$(MAIN_EXEC) $(ARGS)
 
+.PHONY: test
+test: all
+	riscv64-elf-gcc -nostdlib -fno-builtin -march=rv64g -mabi=lp64 -O0 ./playground/decode_test.S -o ./playground/a.out
+	make run ARGS="./playground/a.out" 2>&1 | grep inst | sed 's/inst: inst_\(.*\)/\1/' | head -n -1 > ./playground/output
+	tail -n +5 ./playground/decode_test.S | head -n -2 | awk '{print $$1}' > ./playground/diff
+	diff ./playground/diff ./playground/output
+
 .PHONY: debug
 debug: $(TARGET_DEBUG)
 	gdb $(DEBUG_EXEC) --args $(DEBUG_EXEC) $(ARGS)
