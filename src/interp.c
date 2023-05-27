@@ -119,8 +119,9 @@ void exec_block_interp(state_t *state) {
 
   while (true) {
     uint32_t data = *(uint32_t *)GUEST_TO_HOST(state->pc);
+    // printf("%lx\n", state->pc);
     inst_decode(&inst, data);
-    // IFDEF(CONFIG_DEBUG, printf("data: %#010x\n", data));
+    IFDEF(CONFIG_DEBUG, printf("data: %#010x\n", data));
     IFDEF(CONFIG_DEBUG, fprintf(stderr, "inst: %s\n", inst_name[inst.type]));
 
     funcs[inst.type](state, &inst);

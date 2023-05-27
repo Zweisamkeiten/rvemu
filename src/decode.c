@@ -5,6 +5,7 @@
 
 #include "common.h"
 #include "rvemu.h"
+#include "utils.h"
 
 #define QUADRANT(data) (((data) >> 0) & 0x3)
 
@@ -97,6 +98,264 @@ static inline inst_t inst_csrtype_read(uint32_t data) {
   };
 }
 
+static inline inst_t inst_fprtype_read(uint32_t data) {
+  return (inst_t){
+      .rs1 = RS1(data),
+      .rs2 = RS2(data),
+      .rs3 = RS3(data),
+      .rd = RD(data),
+  };
+}
+
+/**
+ * compressed types
+ */
+#define COPCODE(data) (((data) >> 13) & 0x7)
+#define CFUNCT1(data) (((data) >> 12) & 0x1)
+#define CFUNCT2LOW(data) (((data) >> 5) & 0x3)
+#define CFUNCT2HIGH(data) (((data) >> 10) & 0x3)
+#define RP1(data) (((data) >> 7) & 0x7)
+#define RP2(data) (((data) >> 2) & 0x7)
+#define RC1(data) (((data) >> 7) & 0x1f)
+#define RC2(data) (((data) >> 2) & 0x1f)
+
+static inline inst_t inst_catype_read(uint16_t data) {
+  return (inst_t){
+      .rd = RP1(data) + 8,
+      .rs2 = RP2(data) + 8,
+      .rvc = true,
+  };
+}
+
+static inline inst_t inst_crtype_read(uint16_t data) {
+  return (inst_t){
+      .rs1 = RC1(data),
+      .rs2 = RC2(data),
+      .rvc = true,
+  };
+}
+
+static inline inst_t inst_citype_read(uint16_t data) {
+  uint32_t imm40 = (data >> 2) & 0x1f;
+  uint32_t imm5 = (data >> 12) & 0x1;
+  int32_t imm = (imm5 << 5) | imm40;
+  imm = (imm << 26) >> 26;
+
+  return (inst_t){
+      .imm = imm,
+      .rd = RC1(data),
+      .rvc = true,
+  };
+}
+
+static inline inst_t inst_citype_read2(uint16_t data) {
+  uint32_t imm86 = (data >> 2) & 0x7;
+  uint32_t imm43 = (data >> 5) & 0x3;
+  uint32_t imm5 = (data >> 12) & 0x1;
+
+  int32_t imm = (imm86 << 6) | (imm43 << 3) | (imm5 << 5);
+
+  return (inst_t){
+      .imm = imm,
+      .rd = RC1(data),
+      .rvc = true,
+  };
+}
+
+static inline inst_t inst_citype_read3(uint16_t data) {
+  uint32_t imm5 = (data >> 2) & 0x1;
+  uint32_t imm87 = (data >> 3) & 0x3;
+  uint32_t imm6 = (data >> 5) & 0x1;
+  uint32_t imm4 = (data >> 6) & 0x1;
+  uint32_t imm9 = (data >> 12) & 0x1;
+
+  int32_t imm =
+      (imm5 << 5) | (imm87 << 7) | (imm6 << 6) | (imm4 << 4) | (imm9 << 9);
+  imm = (imm << 22) >> 22;
+
+  return (inst_t){
+      .imm = imm,
+      .rd = RC1(data),
+      .rvc = true,
+  };
+}
+
+static inline inst_t inst_citype_read4(uint16_t data) {
+  uint32_t imm5 = (data >> 12) & 0x1;
+  uint32_t imm42 = (data >> 4) & 0x7;
+  uint32_t imm76 = (data >> 2) & 0x3;
+
+  int32_t imm = (imm5 << 5) | (imm42 << 2) | (imm76 << 6);
+
+  return (inst_t){
+      .imm = imm,
+      .rd = RC1(data),
+      .rvc = true,
+  };
+}
+
+static inline inst_t inst_citype_read5(uint16_t data) {
+  uint32_t imm1612 = (data >> 2) & 0x1f;
+  uint32_t imm17 = (data >> 12) & 0x1;
+
+  int32_t imm = (imm1612 << 12) | (imm17 << 17);
+  imm = (imm << 14) >> 14;
+  return (inst_t){
+      .imm = imm,
+      .rd = RC1(data),
+      .rvc = true,
+  };
+}
+
+static inline inst_t inst_cbtype_read(uint16_t data) {
+  uint32_t imm5 = (data >> 2) & 0x1;
+  uint32_t imm21 = (data >> 3) & 0x3;
+  uint32_t imm76 = (data >> 5) & 0x3;
+  uint32_t imm43 = (data >> 10) & 0x3;
+  uint32_t imm8 = (data >> 12) & 0x1;
+
+  int32_t imm =
+      (imm8 << 8) | (imm76 << 6) | (imm5 << 5) | (imm43 << 3) | (imm21 << 1);
+  imm = (imm << 23) >> 23;
+
+  return (inst_t){
+      .imm = imm,
+      .rs1 = RP1(data) + 8,
+      .rvc = true,
+  };
+}
+
+static inline inst_t inst_cbtype_read2(uint16_t data) {
+  uint32_t imm40 = (data >> 2) & 0x1f;
+  uint32_t imm5 = (data >> 12) & 0x1;
+  int32_t imm = (imm5 << 5) | imm40;
+  imm = (imm << 26) >> 26;
+
+  return (inst_t){
+      .imm = imm,
+      .rd = RP1(data) + 8,
+      .rvc = true,
+  };
+}
+
+static inline inst_t inst_cstype_read(uint16_t data) {
+  uint32_t imm76 = (data >> 5) & 0x3;
+  uint32_t imm53 = (data >> 10) & 0x7;
+
+  int32_t imm = ((imm76 << 6) | (imm53 << 3));
+
+  return (inst_t){
+      .imm = imm,
+      .rs1 = RP1(data) + 8,
+      .rs2 = RP2(data) + 8,
+      .rvc = true,
+  };
+}
+
+static inline inst_t inst_cstype_read2(uint16_t data) {
+  uint32_t imm6 = (data >> 5) & 0x1;
+  uint32_t imm2 = (data >> 6) & 0x1;
+  uint32_t imm53 = (data >> 10) & 0x7;
+
+  int32_t imm = ((imm6 << 6) | (imm2 << 2) | (imm53 << 3));
+
+  return (inst_t){
+      .imm = imm,
+      .rs1 = RP1(data) + 8,
+      .rs2 = RP2(data) + 8,
+      .rvc = true,
+  };
+}
+
+static inline inst_t inst_cjtype_read(uint16_t data) {
+  uint32_t imm5 = (data >> 2) & 0x1;
+  uint32_t imm31 = (data >> 3) & 0x7;
+  uint32_t imm7 = (data >> 6) & 0x1;
+  uint32_t imm6 = (data >> 7) & 0x1;
+  uint32_t imm10 = (data >> 8) & 0x1;
+  uint32_t imm98 = (data >> 9) & 0x3;
+  uint32_t imm4 = (data >> 11) & 0x1;
+  uint32_t imm11 = (data >> 12) & 0x1;
+
+  int32_t imm = ((imm5 << 5) | (imm31 << 1) | (imm7 << 7) | (imm6 << 6) |
+                 (imm10 << 10) | (imm98 << 8) | (imm4 << 4) | (imm11 << 11));
+  imm = (imm << 20) >> 20;
+  return (inst_t){
+      .imm = imm,
+      .rvc = true,
+  };
+}
+
+static inline inst_t inst_cltype_read(uint16_t data) {
+  uint32_t imm6 = (data >> 5) & 0x1;
+  uint32_t imm2 = (data >> 6) & 0x1;
+  uint32_t imm53 = (data >> 10) & 0x7;
+
+  int32_t imm = (imm6 << 6) | (imm2 << 2) | (imm53 << 3);
+
+  return (inst_t){
+      .imm = imm,
+      .rs1 = RP1(data) + 8,
+      .rd = RP2(data) + 8,
+      .rvc = true,
+  };
+}
+
+static inline inst_t inst_cltype_read2(uint16_t data) {
+  uint32_t imm76 = (data >> 5) & 0x3;
+  uint32_t imm53 = (data >> 10) & 0x7;
+
+  int32_t imm = (imm76 << 6) | (imm53 << 3);
+
+  return (inst_t){
+      .imm = imm,
+      .rs1 = RP1(data) + 8,
+      .rd = RP2(data) + 8,
+      .rvc = true,
+  };
+}
+
+static inline inst_t inst_csstype_read(uint16_t data) {
+  uint32_t imm86 = (data >> 7) & 0x7;
+  uint32_t imm53 = (data >> 10) & 0x7;
+
+  int32_t imm = (imm86 << 6) | (imm53 << 3);
+
+  return (inst_t){
+      .imm = imm,
+      .rs2 = RC2(data),
+      .rvc = true,
+  };
+}
+
+static inline inst_t inst_csstype_read2(uint16_t data) {
+  uint32_t imm76 = (data >> 7) & 0x3;
+  uint32_t imm52 = (data >> 9) & 0xf;
+
+  int32_t imm = (imm76 << 6) | (imm52 << 2);
+
+  return (inst_t){
+      .imm = imm,
+      .rs2 = RC2(data),
+      .rvc = true,
+  };
+}
+
+static inline inst_t inst_ciwtype_read(uint16_t data) {
+  uint32_t imm3 = (data >> 5) & 0x1;
+  uint32_t imm2 = (data >> 6) & 0x1;
+  uint32_t imm96 = (data >> 7) & 0xf;
+  uint32_t imm54 = (data >> 11) & 0x3;
+
+  int32_t imm = (imm3 << 3) | (imm2 << 2) | (imm96 << 6) | (imm54 << 4);
+
+  return (inst_t){
+      .imm = imm,
+      .rd = RP2(data) + 8,
+      .rvc = true,
+  };
+}
+
 /**
  * @brief decode the inst
  *
@@ -105,14 +364,360 @@ static inline inst_t inst_csrtype_read(uint32_t data) {
  */
 void inst_decode(inst_t *inst, uint32_t data) {
   uint32_t quadrand = QUADRANT(data);
+  // printf("inst_data: %08x\n", data);
   switch (quadrand) {
-  case 0x0:
-    panic("unimplemented");
-  case 0x1:
-    panic("unimplemented");
-  case 0x2:
-    panic("unimplemented");
-  case 0x3: {
+  case 0b00: {
+    uint32_t copcode = COPCODE(data);
+
+    switch (copcode) {
+    case 0b000: { /* C.ADDI4SPN */
+                  /* addi rd, sp, uimm */
+      *inst = inst_ciwtype_read(data);
+      inst->rs1 = sp;
+      inst->type = inst_addi;
+      Assert(inst->imm != 0, "c.addi4spn uimm=0时非法, %08x", data);
+      printf(ANSI_FMT("c.addi4spn to addi\n", ANSI_FG_BLUE));
+      return;
+    }
+    case 0b001: { /* C.FLD */
+                  /* fld rd, uimm(x2) */
+      *inst = inst_cltype_read2(data);
+      inst->type = inst_fld;
+      printf(ANSI_FMT("c.fld to fld\n", ANSI_FG_BLUE));
+      return;
+    }
+    case 0b010: { /* C.LW */
+      /* lw rd, uimm(rs1) */
+      *inst = inst_cltype_read(data);
+      inst->type = inst_lw;
+      printf(ANSI_FMT("c.lw to lw\n", ANSI_FG_BLUE));
+      return;
+    }
+    case 0b011: { /* C.LD */
+      *inst = inst_cltype_read2(data);
+      inst->type = inst_ld;
+      printf(ANSI_FMT("c.ld to ld\n", ANSI_FG_BLUE));
+      return;
+    }
+    case 0b100: { /* reserverd */
+      panic("reserverd");
+      return;
+    }
+    case 0b101: { /* C.FSD */
+                  /* fsd rs2, uimm(rs1) */
+      *inst = inst_cstype_read(data);
+      inst->type = inst_fsd;
+      printf(ANSI_FMT("c.fsd to fsd\n", ANSI_FG_BLUE));
+      return;
+    }
+    case 0b110: { /* C.SW */
+                  /* sw rs2, uimm(rs1) */
+      *inst = inst_cstype_read2(data);
+      inst->type = inst_sw;
+      printf(ANSI_FMT("c.sw to sw\n", ANSI_FG_BLUE));
+      return;
+    }
+    case 0b111: { /* C.SD */
+                  /* sd rs2, uimm(rs1) */
+      *inst = inst_cstype_read(data);
+      inst->type = inst_sd;
+      printf(ANSI_FMT("c.sd to sd\n", ANSI_FG_BLUE));
+      return;
+    }
+    default:
+      panic("data: %x\n unimplemented", data);
+    }
+  }
+    unreachable();
+  case 0b01: {
+    uint32_t copcode = COPCODE(data);
+
+    switch (copcode) {
+    case 0b000: { /* C.ADDI */
+                  /* addi rd, rd, imm */
+      *inst = inst_citype_read(data);
+      inst->rs1 = inst->rd;
+      inst->type = inst_addi;
+      printf(ANSI_FMT("c.addi to addi\n", ANSI_FG_BLUE));
+      return;
+    }
+    case 0b001: { /* C.ADDIW */
+                  /* addiw rd, rd, imm */
+      *inst = inst_citype_read(data);
+      Assert(inst->rd != zero, "c.addiw rd=x0时非法");
+      inst->rs1 = inst->rd;
+      inst->type = inst_addiw;
+      return;
+    }
+    case 0b010: { /* C.LI */
+                  /* addi rd, zero, imm */
+      *inst = inst_citype_read(data);
+      inst->rs1 = zero;
+      inst->type = inst_addi;
+      printf(ANSI_FMT("c.li to addi\n", ANSI_FG_BLUE));
+      return;
+    }
+    case 0b011: { /* C.LUI / C.ADDI16SP */
+      int32_t rd = RC1(data);
+      if (rd == 2) { /* C.ADDI16SP */
+                     /* addi x2, x2, imm */
+        *inst = inst_citype_read3(data);
+        Assert(inst->imm != 0, "c.addi16sp imm = 0时非法");
+        inst->type = inst_addi;
+        printf(ANSI_FMT("c.addi16sp to addi\n", ANSI_FG_BLUE));
+      } else {
+        *inst = inst_citype_read5(data);
+        Assert(inst->imm != 0, "c.lui rd=x2或imm = 0时非法");
+        Assert(inst->rd != inst->rs2, "c.lui rd=x2或imm = 0时非法");
+        inst->type = inst_lui;
+        printf(ANSI_FMT("c.lui to lui\n", ANSI_FG_BLUE));
+      }
+      return;
+    }
+    case 0b100: { /* MISC-ALU */
+      uint32_t cfunct2high = CFUNCT2HIGH(data);
+
+      switch (cfunct2high) {
+      case 0b00: { /* C.SRLI */
+                   /* srli rd, rd, uimm */
+        *inst = inst_cbtype_read2(data);
+        inst->rs1 = inst->rd;
+        inst->type = inst_srli;
+        printf(ANSI_FMT("c.srli to srli\n", ANSI_FG_BLUE));
+        return;
+      }
+      case 0b01: { /* C.SRAI */
+                   /* srai rd, rd, uimm */
+        *inst = inst_cbtype_read2(data);
+        inst->rs1 = inst->rd;
+        inst->type = inst_srai;
+        printf(ANSI_FMT("c.srai to srai\n", ANSI_FG_BLUE));
+        return;
+      }
+      case 0b10: { /* C.ANDI */
+                   /* andi rd, rd, uimm */
+        *inst = inst_cbtype_read2(data);
+        inst->rs1 = inst->rd;
+        inst->type = inst_andi;
+        printf(ANSI_FMT("c.andi to andi\n", ANSI_FG_BLUE));
+        return;
+      }
+      case 0b11: { /* C.SUB C.XOR C.OR C.AND C.SUBW C.ADDW */
+        uint32_t cfunct1 = CFUNCT1(data);
+
+        switch (cfunct1) {
+        case 0b0: { /* C.SUB C.XOR C.oR C.AND */
+          uint32_t cfunct2low = CFUNCT2LOW(data);
+
+          *inst = inst_catype_read(data);
+          inst->rs1 = inst->rd;
+
+          switch (cfunct2low) {
+          case 0b00: { /* C.SUB */
+                       /* sub rd, rd, rs2 */
+            inst->type = inst_sub;
+            printf(ANSI_FMT("c.sub to sub\n", ANSI_FG_BLUE));
+            return;
+          }
+          case 0b01: { /* C.XOR */
+                       /* xor rd, rd, rs2 */
+            inst->type = inst_xor;
+            printf(ANSI_FMT("c.xor to xor\n", ANSI_FG_BLUE));
+            return;
+          }
+          case 0b10: { /* C.OR */
+                       /* or rd, rd, rs2 */
+            inst->type = inst_or;
+            printf(ANSI_FMT("c.or to or\n", ANSI_FG_BLUE));
+            return;
+          }
+          case 0b11: { /* C.AND */
+                       /* and rd, rd, rs2 */
+            inst->type = inst_and;
+            printf(ANSI_FMT("c.and to and\n", ANSI_FG_BLUE));
+            return;
+          }
+          default:
+            unreachable();
+          }
+          return;
+        }
+        case 0b1: { /* C.SUBW C.ADDW */
+          uint32_t cfunct2low = CFUNCT2LOW(data);
+
+          *inst = inst_catype_read(data);
+          inst->rs1 = inst->rd;
+
+          switch (cfunct2low) {
+          case 0b00: { /* C.SUBW */
+            inst->type = inst_subw;
+            printf(ANSI_FMT("c.subw to subw\n", ANSI_FG_BLUE));
+            return;
+          }
+          case 0b01: { /* C.ADDW */
+            inst->type = inst_addw;
+            printf(ANSI_FMT("c.addw to addw\n", ANSI_FG_BLUE));
+            return;
+          }
+          default:
+            unreachable();
+          }
+        }
+        default:
+          unreachable();
+        }
+        return;
+      }
+      }
+      return;
+    }
+    case 0b101: { /* C.J */
+                  /* jal x0, offset */
+      *inst = inst_cjtype_read(data);
+      inst->rd = zero;
+      inst->type = inst_jal;
+      inst->cont = true;
+      printf(ANSI_FMT("c.j to jal\n", ANSI_FG_BLUE));
+      return;
+    }
+    case 0b110: { /* C.BEQZ */
+      /* beq rs1, x0, offset */
+      *inst = inst_cbtype_read(data);
+      inst->rs2 = zero;
+      inst->type = inst_beq;
+      printf(ANSI_FMT("c.beqz to beq\n", ANSI_FG_BLUE));
+      return;
+    }
+    case 0b111: { /* C.BNEZ */
+      /* bne rs1, x0, offset */
+      *inst = inst_cbtype_read(data);
+      inst->rs2 = zero;
+      inst->type = inst_bne;
+      printf(ANSI_FMT("c.bnez to bne\n", ANSI_FG_BLUE));
+      return;
+    }
+    default:
+      panic("unrecognized copcode");
+    }
+  }
+    unreachable();
+  case 0b10: {
+    uint32_t copcode = COPCODE(data);
+
+    switch (copcode) {
+    case 0b000: { /* C.SLLI */
+      /* slli rd, rd, uimm */
+      *inst = inst_citype_read(data);
+      inst->rs1 = inst->rd;
+      inst->type = inst_slli;
+      printf(ANSI_FMT("c.slli to slli\n", ANSI_FG_BLUE));
+      return;
+    }
+    case 0b001: { /* C.FLDSP */
+                  /* fld rd, uimm(x2) */
+      *inst = inst_citype_read2(data);
+      inst->rs1 = sp;
+      inst->type = inst_fld;
+      printf(ANSI_FMT("c.fldsp to fld\n", ANSI_FG_BLUE));
+      return;
+    }
+    case 0b010: { /* C.LWSP */
+                  /* lw rd, uimm(sp) rd=x0非法 */
+      *inst = inst_citype_read4(data);
+      Assert(inst->rd != zero, "c.lwsp rd = x0 时非法");
+      inst->rs1 = sp;
+      inst->type = inst_lw;
+      printf(ANSI_FMT("c.lwsp to lw\n", ANSI_FG_BLUE));
+      return;
+    }
+    case 0b011: { /* C.LDSP */
+                  /* ld rd, uimm(x2) rd=x0时非法 */
+      *inst = inst_citype_read2(data);
+      Assert(inst->rd != zero, "c.ldsp rd = x0 时非法");
+      inst->rs1 = sp;
+      inst->type = inst_ld;
+      printf(ANSI_FMT("c.ldsp to ld\n", ANSI_FG_BLUE));
+      return;
+    }
+    case 0b100: { /* C.JR C.MV C.EBREAK C.JALR C.ADD */
+      uint32_t cfunct1 = CFUNCT1(data);
+      switch (cfunct1) {
+      case 0b0: { /* C.JR C.MV */
+        *inst = inst_crtype_read(data);
+        if (inst->rs2 == zero) { /* C.JR */
+          /* jalr x0, 0(rs1) */
+          inst->type = inst_jalr;
+          printf(ANSI_FMT("c.jr to jalr\n", ANSI_FG_BLUE));
+          Assert(inst->rs1 != zero, "c.jr rs1=x0时非法");
+          return;
+        } else { /* C.MV */
+                 /* add rd, x0, rs2 */
+          inst->rd = inst->rs1;
+          inst->rs1 = zero;
+          inst->type = inst_add;
+          printf(ANSI_FMT("c.mv to add\n", ANSI_FG_BLUE));
+          Assert(inst->rs2 != zero, "c.mv rs2=x0时非法");
+          return;
+        }
+        return;
+      }
+      case 0b1: { /* C.EBREAK C.JALR C.ADD */
+        *inst = inst_crtype_read(data);
+        if (inst->rs1 == zero && inst->rs2 == zero) { /* C.EBREAK */
+          panic("unimplemented");
+        } else if (inst->rs2 == zero) { /* C.JALR */
+                                        /* jalr x1, 0(rs1) */
+          inst->rd = ra;
+          inst->type = inst_jalr;
+          inst->cont = true;
+          printf(ANSI_FMT("c.jalr to jalr\n", ANSI_FG_BLUE));
+          Assert(inst->rd != zero || inst->rs2 == zero, "c.mv rs2=x0时非法");
+        } else { /* C.ADD */
+                 /* add rd, rd, rs2 rd = x0 或 rs2 = x0 时非法 */
+          inst->rd = inst->rs1;
+          inst->type = inst_add;
+          printf(ANSI_FMT("c.add to add\n", ANSI_FG_BLUE));
+          Assert(inst->rd != zero || inst->rs2 == zero, "c.mv rs2=x0时非法");
+        }
+        return;
+      }
+      default:
+        unreachable();
+      }
+      unreachable();
+    }
+      unreachable();
+    case 0b101: { /*C.FSDSP */
+                  /* fsd rs2, uimm(x2) */
+      *inst = inst_csstype_read(data);
+      inst->rs1 = sp;
+      inst->type = inst_fsd;
+      printf(ANSI_FMT("c.fsdsp to fsd\n", ANSI_FG_BLUE));
+      return;
+    }
+      unreachable();
+    case 0b110: { /*C.SWSP */
+                  /* sw rs2, uimm(x2) */
+      *inst = inst_csstype_read2(data);
+      inst->rs1 = sp;
+      inst->type = inst_sw;
+      printf(ANSI_FMT("c.swsp to sw\n", ANSI_FG_BLUE));
+      return;
+    }
+    case 0b111: { /*C.SDSP */
+      /* sd rs2, uimm(x2) */
+      *inst = inst_csstype_read(data);
+      inst->rs1 = sp;
+      inst->type = inst_sd;
+      printf(ANSI_FMT("c.sdsp to sd\n", ANSI_FG_BLUE));
+      return;
+    }
+    default:
+      panic("unrecognized copcode");
+    }
+  }
+    unreachable();
+  case 0b11: {
     uint32_t opcode = OPCODE(data);
     switch (opcode) {
     case 0x0: {
@@ -461,12 +1066,343 @@ void inst_decode(inst_t *inst, uint32_t data) {
       }
     }
     case 0x10: {
+      uint32_t funct2 = FUNCT2(data);
+
+      *inst = inst_fprtype_read(data);
+      switch (funct2) {
+      case 0x0: /* FMADD.S */
+        inst->type = inst_fmadd_s;
+        return;
+      case 0x1: /* FMADD.D */
+        inst->type = inst_fmadd_d;
+        return;
+      default:
+        unreachable();
+      }
     }
       unreachable();
     case 0x11: {
+      uint32_t funct2 = FUNCT2(data);
+
+      *inst = inst_fprtype_read(data);
+      switch (funct2) {
+      case 0x0: /* FMSUB.S */
+        inst->type = inst_fmsub_s;
+        return;
+      case 0x1: /* FMSUB.D */
+        inst->type = inst_fmsub_d;
+        return;
+      default:
+        unreachable();
+      }
     }
       unreachable();
     case 0x12: {
+      uint32_t funct2 = FUNCT2(data);
+
+      *inst = inst_fprtype_read(data);
+      switch (funct2) {
+      case 0x0: /* FNMSUB.S */
+        inst->type = inst_fnmsub_s;
+        return;
+      case 0x1: /* FNMSUB.D */
+        inst->type = inst_fnmsub_d;
+        return;
+      default:
+        unreachable();
+      }
+    }
+      unreachable();
+    case 0x13: {
+      uint32_t funct2 = FUNCT2(data);
+
+      *inst = inst_fprtype_read(data);
+      switch (funct2) {
+      case 0x0: /* FNMADD.S */
+        inst->type = inst_fnmadd_s;
+        return;
+      case 0x1: /* FNMADD.D */
+        inst->type = inst_fnmadd_d;
+        return;
+      default:
+        unreachable();
+      }
+    }
+      unreachable();
+    case 0x14: {
+      uint32_t funct7 = FUNCT7(data);
+
+      *inst = inst_rtype_read(data);
+      switch (funct7) {
+      case 0x0: /* FADD.S */
+        inst->type = inst_fadd_s;
+        return;
+      case 0x1: /* FADD.D */
+        inst->type = inst_fadd_d;
+        return;
+      case 0x4: /* FSUB.S */
+        inst->type = inst_fsub_s;
+        return;
+      case 0x5: /* FSUB.D */
+        inst->type = inst_fsub_d;
+        return;
+      case 0x8: /* FMUL.S */
+        inst->type = inst_fmul_s;
+        return;
+      case 0x9: /* FMUL.D */
+        inst->type = inst_fmul_d;
+        return;
+      case 0xc: /* FDIV.S */
+        inst->type = inst_fdiv_s;
+        return;
+      case 0xd: /* FDIV.D */
+        inst->type = inst_fdiv_d;
+        return;
+      case 0x10: {
+        uint32_t funct3 = FUNCT3(data);
+
+        switch (funct3) {
+        case 0x0: /* FSGNJ.S */
+          inst->type = inst_fsgnj_s;
+          return;
+        case 0x1: /* FSGNJN.S */
+          inst->type = inst_fsgnjn_s;
+          return;
+        case 0x2: /* FSGNJX.S */
+          inst->type = inst_fsgnjx_s;
+          return;
+        default:
+          unreachable();
+        }
+      }
+        unreachable();
+      case 0x11: {
+        uint32_t funct3 = FUNCT3(data);
+
+        switch (funct3) {
+        case 0x0: /* FSGNJ.D */
+          inst->type = inst_fsgnj_d;
+          return;
+        case 0x1: /* FSGNJN.D */
+          inst->type = inst_fsgnjn_d;
+          return;
+        case 0x2: /* FSGNJX.D */
+          inst->type = inst_fsgnjx_d;
+          return;
+        default:
+          unreachable();
+        }
+      }
+        unreachable();
+      case 0x14: {
+        uint32_t funct3 = FUNCT3(data);
+
+        switch (funct3) {
+        case 0x0: /* FMIN.S */
+          inst->type = inst_fmin_s;
+          return;
+        case 0x1: /* FMAX.S */
+          inst->type = inst_fmax_s;
+          return;
+        default:
+          unreachable();
+        }
+      }
+        unreachable();
+      case 0x15: {
+        uint32_t funct3 = FUNCT3(data);
+
+        switch (funct3) {
+        case 0x0: /* FMIN.D */
+          inst->type = inst_fmin_d;
+          return;
+        case 0x1: /* FMAX.D */
+          inst->type = inst_fmax_d;
+          return;
+        default:
+          unreachable();
+        }
+      }
+        unreachable();
+      case 0x20: /* FCVT.S.D */
+        Assert(RS2(data) == 1, "fcvt.s.d");
+        inst->type = inst_fcvt_s_d;
+        return;
+      case 0x21: /* FCVT.D.S */
+        Assert(RS2(data) == 0, "fcvt.d.s");
+        inst->type = inst_fcvt_d_s;
+        return;
+      case 0x2c: /* FSQRT.S */
+        Assert(inst->rs2 == 0, "fsqrt.s");
+        inst->type = inst_fsqrt_s;
+        return;
+      case 0x2d: /* FSQRT.D */
+        Assert(inst->rs2 == 0, "fsqrt.d");
+        inst->type = inst_fsqrt_d;
+        return;
+      case 0x50: {
+        uint32_t funct3 = FUNCT3(data);
+
+        switch (funct3) {
+        case 0x0: /* FLE.S */
+          inst->type = inst_fle_s;
+          return;
+        case 0x1: /* FLT.S */
+          inst->type = inst_flt_s;
+          return;
+        case 0x2: /* FEQ.S */
+          inst->type = inst_feq_s;
+          return;
+        default:
+          unreachable();
+        }
+      }
+        unreachable();
+      case 0x51: {
+        uint32_t funct3 = FUNCT3(data);
+
+        switch (funct3) {
+        case 0x0: /* FLE.D */
+          inst->type = inst_fle_d;
+          return;
+        case 0x1: /* FLT.D */
+          inst->type = inst_flt_d;
+          return;
+        case 0x2: /* FEQ.D */
+          inst->type = inst_feq_d;
+          return;
+        default:
+          unreachable();
+        }
+      }
+        unreachable();
+      case 0x60: {
+        uint32_t rs2 = RS2(data);
+
+        switch (rs2) {
+        case 0x0: /* FCVT.W.S */
+          inst->type = inst_fcvt_w_s;
+          return;
+        case 0x1: /* FCVT.WU.S */
+          inst->type = inst_fcvt_wu_s;
+          return;
+        case 0x2: /* FCVT.L.S */
+          inst->type = inst_fcvt_l_s;
+          return;
+        case 0x3: /* FCVT.LU.S */
+          inst->type = inst_fcvt_lu_s;
+          return;
+        default:
+          unreachable();
+        }
+      }
+        unreachable();
+      case 0x61: {
+        uint32_t rs2 = RS2(data);
+
+        switch (rs2) {
+        case 0x0: /* FCVT.W.D */
+          inst->type = inst_fcvt_w_d;
+          return;
+        case 0x1: /* FCVT.WU.D */
+          inst->type = inst_fcvt_wu_d;
+          return;
+        case 0x2: /* FCVT.L.D */
+          inst->type = inst_fcvt_l_d;
+          return;
+        case 0x3: /* FCVT.LU.D */
+          inst->type = inst_fcvt_lu_d;
+          return;
+        default:
+          unreachable();
+        }
+      }
+        unreachable();
+      case 0x68: {
+        uint32_t rs2 = RS2(data);
+
+        switch (rs2) {
+        case 0x0: /* FCVT.S.W */
+          inst->type = inst_fcvt_s_w;
+          return;
+        case 0x1: /* FCVT.S.WU */
+          inst->type = inst_fcvt_s_wu;
+          return;
+        case 0x2: /* FCVT.S.L */
+          inst->type = inst_fcvt_s_l;
+          return;
+        case 0x3: /* FCVT.S.LU */
+          inst->type = inst_fcvt_s_lu;
+          return;
+        default:
+          unreachable();
+        }
+      }
+        unreachable();
+      case 0x69: {
+        uint32_t rs2 = RS2(data);
+
+        switch (rs2) {
+        case 0x0: /* FCVT.D.W */
+          inst->type = inst_fcvt_d_w;
+          return;
+        case 0x1: /* FCVT.D.WU */
+          inst->type = inst_fcvt_d_wu;
+          return;
+        case 0x2: /* FCVT.D.L */
+          inst->type = inst_fcvt_d_l;
+          return;
+        case 0x3: /* FCVT.D.LU */
+          inst->type = inst_fcvt_d_lu;
+          return;
+        default:
+          unreachable();
+        }
+      }
+        unreachable();
+      case 0x70: {
+        Assert(RS2(data) == 0, "fmv.x.w/fclass.s");
+        uint32_t funct3 = FUNCT3(data);
+
+        switch (funct3) {
+        case 0x0: /* FMV.X.W */
+          inst->type = inst_fmv_x_w;
+          return;
+        case 0x1: /* FCLASS.S */
+          inst->type = inst_fclass_s;
+          return;
+        default:
+          unreachable();
+        }
+      }
+        unreachable();
+      case 0x71: {
+        Assert(RS2(data) == 0, "fmv.x.d/fclass.d");
+        uint32_t funct3 = FUNCT3(data);
+
+        switch (funct3) {
+        case 0x0: /* FMV.X.D */
+          inst->type = inst_fmv_x_d;
+          return;
+        case 0x1: /* FCLASS.D */
+          inst->type = inst_fclass_d;
+          return;
+        default:
+          unreachable();
+        }
+      }
+        unreachable();
+      case 0x78: /* FMV_W_X */
+        Assert(RS2(data) == 0 && FUNCT3(data) == 0, "fmv_w_x");
+        inst->type = inst_fmv_w_x;
+        return;
+      case 0x79: /* FMV_D_X */
+        Assert(RS2(data) == 0 && FUNCT3(data) == 0, "fmv_d_x");
+        inst->type = inst_fmv_d_x;
+        return;
+      default:
+        unreachable();
+      }
     }
       unreachable();
     case 0x18: {
