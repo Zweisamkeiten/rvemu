@@ -78,14 +78,14 @@ static inline inst_t inst_utype_read(uint32_t data) {
 
 static inline inst_t inst_jtype_read(uint32_t data) {
   uint32_t imm20 = (data >> 31) & 0x1;
-  uint32_t imm101 = (data >> 20) & 0x3ff;
-  uint32_t imm11 = (data >> 19) & 0x1;
+  uint32_t imm101 = (data >> 21) & 0x3ff;
+  uint32_t imm11 = (data >> 20) & 0x1;
   uint32_t imm1912 = (data >> 12) & 0xff;
 
   int32_t imm = (imm20 << 20) | (imm1912 << 12) | (imm11 << 11) | (imm101 << 1);
   imm = (imm << (32 - (20 - 0 + 1))) >> (32 - (20 - 0 + 1));
   return (inst_t){
-      .imm = (int32_t)data & 0xfffff000,
+      .imm = imm,
       .rd = RD(data),
   };
 }
