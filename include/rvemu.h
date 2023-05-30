@@ -204,9 +204,13 @@ enum exit_reason_t {
   ecall,
 };
 
+#include "elfdef.h"
+#include "reg.h"
+
 typedef struct {
   enum exit_reason_t exit_reason;
-  uint64_t gp_regs[32];
+  uint64_t gp_regs[num_gp_regs];
+  fp_reg_t fp_regs[num_fp_regs];
   uint64_t pc;
 } state_t;
 
@@ -217,9 +221,6 @@ typedef struct {
   state_t state;
   mmu_t mmu;
 } machine_t;
-
-#include "elfdef.h"
-#include "reg.h"
 
 enum exit_reason_t machine_step(machine_t *m);
 void machine_load_program(machine_t *m, const char *prog);
