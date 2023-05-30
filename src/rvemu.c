@@ -12,7 +12,9 @@ int main(int argc, char *argv[]) {
     enum exit_reason_t reason = machine_step(&machine);
     Assert(reason == ecall, "exit reason is not ecall");
 
-    panic("syscall!");
+    uint64_t syscall = machine_get_gp_reg(&machine, a7);
+    uint64_t ret = do_syscall(&machine, syscall);
+    machine_set_gp_reg(&machine, a0, ret);
   }
 
   return EXIT_SUCCESS;

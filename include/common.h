@@ -58,4 +58,6 @@
 #define GUEST_TO_HOST(addr) (addr + GUEST_MEMORY_OFFSET)
 #define HOST_TO_GUEST(addr) (addr - GUEST_MEMORY_OFFSET)
 
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
+
 #endif
