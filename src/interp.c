@@ -127,7 +127,7 @@ static void func_auipc(state_t *state, inst_t *inst) {
   static void func_##inst(state_t *state, inst_t *inst) {                      \
     uint64_t rs1 = state->gp_regs[inst->rs1];                                  \
     uint64_t rs2 = state->gp_regs[inst->rs2];                                  \
-    printf("%llx\n", GUEST_TO_HOST(rs1 + inst->imm));                           \
+    printf("%llx\n", GUEST_TO_HOST(rs1 + inst->imm));                          \
     *(typ *)GUEST_TO_HOST(rs1 + inst->imm) = (typ)rs2;                         \
   }
 
@@ -214,6 +214,24 @@ static void func_ecall(state_t *state, inst_t *inst) {
   state->reenter_pc = state->pc + 4;
 }
 
+static void func_lui(state_t *state, inst_t *inst) {
+  state->gp_regs[inst->rd] = (int64_t)inst->imm;
+}
+
+static void func_div(state_t *state, inst_t *inst) {
+  uint64_t rs1 = state->gp_regs[inst->rs1];
+  uint64_t rs2 = state->gp_regs[inst->rs2];
+  uint64_t rd = 0;
+  if (rs2 == 0) {
+    rd = UINT64_MAX;
+  } else if (rs1 == INT64_MIN && rs2 == UINT64_MAX) {
+    rd = INT64_MIN;
+  } else {
+    rd = (int64_t)rs1 / (int64_t)rs2;
+  }
+  state->gp_regs[inst->rd] = rd;
+}
+
 typedef void(func_t)(state_t *, inst_t *);
 
 static func_t *funcs[] = {
@@ -231,10 +249,10 @@ static func_t *funcs[] = {
     func_add,   func_sll,   func_slt,    func_sltu,  func_xor,   func_srl,
     func_or,    func_and,
 
-    func_mul,   func_mulh,  func_mulhsu, func_mulhu, func_empty, func_remu,
-    func_empty, func_empty,
+    func_mul,   func_mulh,  func_mulhsu, func_mulhu, func_div,   func_empty,
+    func_empty, func_remu,
 
-    func_sub,   func_sra,   func_empty,
+    func_sub,   func_sra,   func_lui,
 
     func_addw,  func_sllw,  func_srlw,   func_mulw,  func_divw,  func_divuw,
     func_remw,  func_remuw, func_subw,   func_sraw,
