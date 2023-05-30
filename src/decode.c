@@ -363,9 +363,9 @@ static inline inst_t inst_ciwtype_read(uint16_t data) {
  * @param data
  */
 void inst_decode(inst_t *inst, uint32_t data) {
-  uint32_t quadrand = QUADRANT(data);
+  uint32_t quadrant = QUADRANT(data);
   // printf("inst_data: %08x\n", data);
-  switch (quadrand) {
+  switch (quadrant) {
   case 0b00: {
     uint32_t copcode = COPCODE(data);
 
@@ -464,6 +464,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
         *inst = inst_citype_read3(data);
         Assert(inst->imm != 0, "c.addi16sp imm = 0时非法");
         inst->type = inst_addi;
+        inst->rs1 = inst->rd;
         printf(ANSI_FMT("c.addi16sp to addi\n", ANSI_FG_BLUE));
       } else {
         *inst = inst_citype_read5(data);
@@ -645,8 +646,10 @@ void inst_decode(inst_t *inst, uint32_t data) {
       case 0b0: { /* C.JR C.MV */
         *inst = inst_crtype_read(data);
         if (inst->rs2 == zero) { /* C.JR */
-          /* jalr x0, 0(rs1) */
+                                 /* jalr x0, 0(rs1) */
+          inst->rd = zero;
           inst->type = inst_jalr;
+          inst->cont = true;
           printf(ANSI_FMT("c.jr to jalr\n", ANSI_FG_BLUE));
           Assert(inst->rs1 != zero, "c.jr rs1=x0时非法");
           return;
