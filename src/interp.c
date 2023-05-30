@@ -194,7 +194,7 @@ FUNC_BR(bne, (uint64_t)rs1 != (uint64_t)rs2);
 FUNC_BR(blt, (int64_t)rs1 < (int64_t)rs2);
 FUNC_BR(bge, (int64_t)rs1 >= (int64_t)rs2);
 FUNC_BR(bltu, (uint64_t)rs1 < (uint64_t)rs2);
-FUNC_BR(bgeu, (uint64_t)rs1 > -(uint64_t)rs2);
+FUNC_BR(bgeu, (uint64_t)rs1 >= (uint64_t)rs2);
 
 static void func_jalr(state_t *state, inst_t *inst) {
   uint64_t rs1 = state->gp_regs[inst->rs1];
