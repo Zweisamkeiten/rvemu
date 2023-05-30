@@ -232,6 +232,28 @@ static void func_div(state_t *state, inst_t *inst) {
   state->gp_regs[inst->rd] = rd;
 }
 
+static void func_divu(state_t *state, inst_t *inst) {
+  uint64_t rs1 = state->gp_regs[inst->rs1];
+  uint64_t rs2 = state->gp_regs[inst->rs2];
+  uint64_t rd = 0;
+  if (rs2 == 0) {
+    rd = UINT64_MAX;
+  } else {
+    rd = rs1 / rs2;
+  }
+  state->gp_regs[inst->rd] = rd;
+}
+
+#define FUNC_FSTORE(inst, typ)                                                 \
+  static void func_##inst(state_t *state, inst_t *inst) {                      \
+    uint64_t rs1 = state->gp_regs[inst->rs1];                                  \
+    uint64_t rs2 = state->fp_regs[inst->rs2].v;                                \
+    *(typ *)GUEST_TO_HOST(rs1 + inst->imm) = (typ)rs2;                         \
+  }
+
+FUNC_FSTORE(fsw, uint32_t);
+FUNC_FSTORE(fsd, uint32_t);
+
 typedef void(func_t)(state_t *, inst_t *);
 
 static func_t *funcs[] = {
@@ -249,7 +271,7 @@ static func_t *funcs[] = {
     func_add,   func_sll,   func_slt,    func_sltu,  func_xor,   func_srl,
     func_or,    func_and,
 
-    func_mul,   func_mulh,  func_mulhsu, func_mulhu, func_div,   func_empty,
+    func_mul,   func_mulh,  func_mulhsu, func_mulhu, func_div,   func_divu,
     func_empty, func_remu,
 
     func_sub,   func_sra,   func_lui,
@@ -263,7 +285,7 @@ static func_t *funcs[] = {
 
     func_empty, func_empty, func_empty,  func_empty, func_empty, func_empty,
 
-    func_empty, func_empty,
+    func_empty, func_fsw,
 
     func_empty, func_empty, func_empty,  func_empty, func_empty, func_empty,
     func_empty, func_empty, func_empty,
@@ -280,7 +302,7 @@ static func_t *funcs[] = {
 
     func_empty, func_empty,
 
-    func_empty, func_empty,
+    func_empty, func_fsd,
 
     func_empty, func_empty, func_empty,  func_empty,
 
