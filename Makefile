@@ -1,6 +1,9 @@
+# default rule
+default: makedir all
+
 # tool macros
 CC := clang
-CFLAGS := -O3 -Wall -Werror
+CFLAGS := -O3 -Wall -Werror -MMD
 LINKLIB := -lm
 DBGFLAGS := -g -fsanitize=address
 
@@ -37,8 +40,8 @@ CLEAN_LIST := $(RUN) \
 			  $(TARGET_DEBUG) \
 			  $(DISTCLEAN_LIST)
 
-# default rule
-default: makedir all
+# Depencies
+-include $(OBJ:.o=.d)
 
 # non-phony targets
 $(TARGET): $(OBJ)
