@@ -364,7 +364,7 @@ static inline inst_t inst_ciwtype_read(uint16_t data) {
  */
 void inst_decode(inst_t *inst, uint32_t data) {
   uint32_t quadrant = QUADRANT(data);
-  // printf("inst_data: %08x\n", data);
+
   switch (quadrant) {
   case 0b00: {
     uint32_t copcode = COPCODE(data);
@@ -376,27 +376,27 @@ void inst_decode(inst_t *inst, uint32_t data) {
       inst->rs1 = sp;
       inst->type = inst_addi;
       Assert(inst->imm != 0, "c.addi4spn uimm=0时非法, %08x", data);
-      printf(ANSI_FMT("c.addi4spn to addi\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.addi4spn to addi\n", ANSI_FG_BLUE)));
       return;
     }
     case 0b001: { /* C.FLD */
                   /* fld rd, uimm(x2) */
       *inst = inst_cltype_read2(data);
       inst->type = inst_fld;
-      printf(ANSI_FMT("c.fld to fld\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.fld to fld\n", ANSI_FG_BLUE)));
       return;
     }
     case 0b010: { /* C.LW */
       /* lw rd, uimm(rs1) */
       *inst = inst_cltype_read(data);
       inst->type = inst_lw;
-      printf(ANSI_FMT("c.lw to lw\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.lw to lw\n", ANSI_FG_BLUE)));
       return;
     }
     case 0b011: { /* C.LD */
       *inst = inst_cltype_read2(data);
       inst->type = inst_ld;
-      printf(ANSI_FMT("c.ld to ld\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.ld to ld\n", ANSI_FG_BLUE)));
       return;
     }
     case 0b100: { /* reserverd */
@@ -407,21 +407,21 @@ void inst_decode(inst_t *inst, uint32_t data) {
                   /* fsd rs2, uimm(rs1) */
       *inst = inst_cstype_read(data);
       inst->type = inst_fsd;
-      printf(ANSI_FMT("c.fsd to fsd\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.fsd to fsd\n", ANSI_FG_BLUE)));
       return;
     }
     case 0b110: { /* C.SW */
                   /* sw rs2, uimm(rs1) */
       *inst = inst_cstype_read2(data);
       inst->type = inst_sw;
-      printf(ANSI_FMT("c.sw to sw\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.sw to sw\n", ANSI_FG_BLUE)));
       return;
     }
     case 0b111: { /* C.SD */
                   /* sd rs2, uimm(rs1) */
       *inst = inst_cstype_read(data);
       inst->type = inst_sd;
-      printf(ANSI_FMT("c.sd to sd\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.sd to sd\n", ANSI_FG_BLUE)));
       return;
     }
     default:
@@ -438,7 +438,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
       *inst = inst_citype_read(data);
       inst->rs1 = inst->rd;
       inst->type = inst_addi;
-      printf(ANSI_FMT("c.addi to addi\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.addi to addi\n", ANSI_FG_BLUE)));
       return;
     }
     case 0b001: { /* C.ADDIW */
@@ -454,7 +454,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
       *inst = inst_citype_read(data);
       inst->rs1 = zero;
       inst->type = inst_addi;
-      printf(ANSI_FMT("c.li to addi\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.li to addi\n", ANSI_FG_BLUE)));
       return;
     }
     case 0b011: { /* C.LUI / C.ADDI16SP */
@@ -465,13 +465,13 @@ void inst_decode(inst_t *inst, uint32_t data) {
         Assert(inst->imm != 0, "c.addi16sp imm = 0时非法");
         inst->type = inst_addi;
         inst->rs1 = inst->rd;
-        printf(ANSI_FMT("c.addi16sp to addi\n", ANSI_FG_BLUE));
+        IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.addi16sp to addi\n", ANSI_FG_BLUE)));
       } else {
         *inst = inst_citype_read5(data);
         Assert(inst->imm != 0, "c.lui rd=x2或imm = 0时非法");
         Assert(inst->rd != inst->rs2, "c.lui rd=x2或imm = 0时非法");
         inst->type = inst_lui;
-        printf(ANSI_FMT("c.lui to lui\n", ANSI_FG_BLUE));
+        IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.lui to lui\n", ANSI_FG_BLUE)));
       }
       return;
     }
@@ -484,7 +484,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
         *inst = inst_cbtype_read2(data);
         inst->rs1 = inst->rd;
         inst->type = inst_srli;
-        printf(ANSI_FMT("c.srli to srli\n", ANSI_FG_BLUE));
+        IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.srli to srli\n", ANSI_FG_BLUE)));
         return;
       }
       case 0b01: { /* C.SRAI */
@@ -492,7 +492,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
         *inst = inst_cbtype_read2(data);
         inst->rs1 = inst->rd;
         inst->type = inst_srai;
-        printf(ANSI_FMT("c.srai to srai\n", ANSI_FG_BLUE));
+        IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.srai to srai\n", ANSI_FG_BLUE)));
         return;
       }
       case 0b10: { /* C.ANDI */
@@ -500,7 +500,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
         *inst = inst_cbtype_read2(data);
         inst->rs1 = inst->rd;
         inst->type = inst_andi;
-        printf(ANSI_FMT("c.andi to andi\n", ANSI_FG_BLUE));
+        IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.andi to andi\n", ANSI_FG_BLUE)));
         return;
       }
       case 0b11: { /* C.SUB C.XOR C.OR C.AND C.SUBW C.ADDW */
@@ -517,25 +517,25 @@ void inst_decode(inst_t *inst, uint32_t data) {
           case 0b00: { /* C.SUB */
                        /* sub rd, rd, rs2 */
             inst->type = inst_sub;
-            printf(ANSI_FMT("c.sub to sub\n", ANSI_FG_BLUE));
+            IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.sub to sub\n", ANSI_FG_BLUE)));
             return;
           }
           case 0b01: { /* C.XOR */
                        /* xor rd, rd, rs2 */
             inst->type = inst_xor;
-            printf(ANSI_FMT("c.xor to xor\n", ANSI_FG_BLUE));
+            IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.xor to xor\n", ANSI_FG_BLUE)));
             return;
           }
           case 0b10: { /* C.OR */
                        /* or rd, rd, rs2 */
             inst->type = inst_or;
-            printf(ANSI_FMT("c.or to or\n", ANSI_FG_BLUE));
+            IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.or to or\n", ANSI_FG_BLUE)));
             return;
           }
           case 0b11: { /* C.AND */
                        /* and rd, rd, rs2 */
             inst->type = inst_and;
-            printf(ANSI_FMT("c.and to and\n", ANSI_FG_BLUE));
+            IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.and to and\n", ANSI_FG_BLUE)));
             return;
           }
           default:
@@ -552,12 +552,12 @@ void inst_decode(inst_t *inst, uint32_t data) {
           switch (cfunct2low) {
           case 0b00: { /* C.SUBW */
             inst->type = inst_subw;
-            printf(ANSI_FMT("c.subw to subw\n", ANSI_FG_BLUE));
+            IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.subw to subw\n", ANSI_FG_BLUE)));
             return;
           }
           case 0b01: { /* C.ADDW */
             inst->type = inst_addw;
-            printf(ANSI_FMT("c.addw to addw\n", ANSI_FG_BLUE));
+            IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.addw to addw\n", ANSI_FG_BLUE)));
             return;
           }
           default:
@@ -578,7 +578,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
       inst->rd = zero;
       inst->type = inst_jal;
       inst->cont = true;
-      printf(ANSI_FMT("c.j to jal\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.j to jal\n", ANSI_FG_BLUE)));
       return;
     }
     case 0b110: { /* C.BEQZ */
@@ -586,7 +586,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
       *inst = inst_cbtype_read(data);
       inst->rs2 = zero;
       inst->type = inst_beq;
-      printf(ANSI_FMT("c.beqz to beq\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.beqz to beq\n", ANSI_FG_BLUE)));
       return;
     }
     case 0b111: { /* C.BNEZ */
@@ -594,7 +594,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
       *inst = inst_cbtype_read(data);
       inst->rs2 = zero;
       inst->type = inst_bne;
-      printf(ANSI_FMT("c.bnez to bne\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.bnez to bne\n", ANSI_FG_BLUE)));
       return;
     }
     default:
@@ -611,7 +611,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
       *inst = inst_citype_read(data);
       inst->rs1 = inst->rd;
       inst->type = inst_slli;
-      printf(ANSI_FMT("c.slli to slli\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.slli to slli\n", ANSI_FG_BLUE)));
       return;
     }
     case 0b001: { /* C.FLDSP */
@@ -619,7 +619,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
       *inst = inst_citype_read2(data);
       inst->rs1 = sp;
       inst->type = inst_fld;
-      printf(ANSI_FMT("c.fldsp to fld\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.fldsp to fld\n", ANSI_FG_BLUE)));
       return;
     }
     case 0b010: { /* C.LWSP */
@@ -628,7 +628,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
       Assert(inst->rd != zero, "c.lwsp rd = x0 时非法");
       inst->rs1 = sp;
       inst->type = inst_lw;
-      printf(ANSI_FMT("c.lwsp to lw\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.lwsp to lw\n", ANSI_FG_BLUE)));
       return;
     }
     case 0b011: { /* C.LDSP */
@@ -637,7 +637,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
       Assert(inst->rd != zero, "c.ldsp rd = x0 时非法");
       inst->rs1 = sp;
       inst->type = inst_ld;
-      printf(ANSI_FMT("c.ldsp to ld\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.ldsp to ld\n", ANSI_FG_BLUE)));
       return;
     }
     case 0b100: { /* C.JR C.MV C.EBREAK C.JALR C.ADD */
@@ -650,7 +650,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
           inst->rd = zero;
           inst->type = inst_jalr;
           inst->cont = true;
-          printf(ANSI_FMT("c.jr to jalr\n", ANSI_FG_BLUE));
+          IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.jr to jalr\n", ANSI_FG_BLUE)));
           Assert(inst->rs1 != zero, "c.jr rs1=x0时非法");
           return;
         } else { /* C.MV */
@@ -658,7 +658,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
           inst->rd = inst->rs1;
           inst->rs1 = zero;
           inst->type = inst_add;
-          printf(ANSI_FMT("c.mv to add\n", ANSI_FG_BLUE));
+          IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.mv to add\n", ANSI_FG_BLUE)));
           Assert(inst->rs2 != zero, "c.mv rs2=x0时非法");
           return;
         }
@@ -673,13 +673,13 @@ void inst_decode(inst_t *inst, uint32_t data) {
           inst->rd = ra;
           inst->type = inst_jalr;
           inst->cont = true;
-          printf(ANSI_FMT("c.jalr to jalr\n", ANSI_FG_BLUE));
+          IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.jalr to jalr\n", ANSI_FG_BLUE)));
           Assert(inst->rd != zero || inst->rs2 == zero, "c.mv rs2=x0时非法");
         } else { /* C.ADD */
                  /* add rd, rd, rs2 rd = x0 或 rs2 = x0 时非法 */
           inst->rd = inst->rs1;
           inst->type = inst_add;
-          printf(ANSI_FMT("c.add to add\n", ANSI_FG_BLUE));
+          IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.add to add\n", ANSI_FG_BLUE)));
           Assert(inst->rd != zero || inst->rs2 == zero, "c.mv rs2=x0时非法");
         }
         return;
@@ -695,7 +695,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
       *inst = inst_csstype_read(data);
       inst->rs1 = sp;
       inst->type = inst_fsd;
-      printf(ANSI_FMT("c.fsdsp to fsd\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.fsdsp to fsd\n", ANSI_FG_BLUE)));
       return;
     }
       unreachable();
@@ -704,7 +704,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
       *inst = inst_csstype_read2(data);
       inst->rs1 = sp;
       inst->type = inst_sw;
-      printf(ANSI_FMT("c.swsp to sw\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.swsp to sw\n", ANSI_FG_BLUE)));
       return;
     }
     case 0b111: { /*C.SDSP */
@@ -712,7 +712,7 @@ void inst_decode(inst_t *inst, uint32_t data) {
       *inst = inst_csstype_read(data);
       inst->rs1 = sp;
       inst->type = inst_sd;
-      printf(ANSI_FMT("c.sdsp to sd\n", ANSI_FG_BLUE));
+      IFDEF(CONFIG_DEBUG, printf(ANSI_FMT("c.sdsp to sd\n", ANSI_FG_BLUE)));
       return;
     }
     default:

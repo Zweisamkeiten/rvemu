@@ -127,7 +127,7 @@ static void func_auipc(state_t *state, inst_t *inst) {
   static void func_##inst(state_t *state, inst_t *inst) {                      \
     uint64_t rs1 = state->gp_regs[inst->rs1];                                  \
     uint64_t rs2 = state->gp_regs[inst->rs2];                                  \
-    printf("%llx\n", GUEST_TO_HOST(rs1 + inst->imm));                          \
+    IFDEF(CONFIG_DEBUG, printf("%llx\n", GUEST_TO_HOST(rs1 + inst->imm)));     \
     *(typ *)GUEST_TO_HOST(rs1 + inst->imm) = (typ)rs2;                         \
   }
 
@@ -310,13 +310,13 @@ void exec_block_interp(state_t *state) {
   static inst_t inst = {0};
 
   while (true) {
-    printf("pc: %lx\n", state->pc);
+    IFDEF(CONFIG_DEBUG, printf("pc: %lx\n", state->pc));
     uint32_t data = *(uint32_t *)GUEST_TO_HOST(state->pc);
     inst_decode(&inst, data);
     IFDEF(CONFIG_DEBUG, printf("data: %#010x\n", data));
     IFDEF(CONFIG_DEBUG, fprintf(stderr, "inst: %s\n", inst_name[inst.type]));
 
-    printf("%s\n", inst_name[inst.type]);
+    IFDEF(CONFIG_DEBUG, printf("%s\n", inst_name[inst.type]));
     funcs[inst.type](state, &inst);
     state->gp_regs[zero] = 0;
 
