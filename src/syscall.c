@@ -1,6 +1,7 @@
 #include "mmu.h"
 #include "rvemu.h"
 #include <sys/stat.h>
+#include <sys/time.h>
 
 // Copied from https://github.com/riscv-software-src/riscv-pk
 #define SYS_exit 93
@@ -77,20 +78,49 @@ static uint64_t sys_unimplemented(machine_t *m) {
   fatalf("unimplemented syscall: %lu", machine_get_gp_reg(m, a7));
 }
 
+static uint64_t sys_exit(machine_t *m) {
+  GET(a0, code);
+  exit(code);
+}
+
+static uint64_t sys_close(machine_t *m) {
+  GET(a0, fd);
+  if (fd > 2)
+    return close(fd);
+  return 0;
+}
+
+static uint64_t sys_write(machine_t *m) {
+  GET(a0, fd);
+  GET(a1, ptr);
+  GET(a2, len);
+  return write(fd, (void *)GUEST_TO_HOST(ptr), (size_t)len);
+}
+
 static uint64_t sys_fstat(machine_t *m) {
   GET(a0, fd);
   GET(a1, addr);
   return fstat(fd, (struct stat *)GUEST_TO_HOST(addr));
 }
 
+static uint64_t sys_brk(machine_t *m) {
+  GET(a0, addr);
+  if (addr == 0)
+    addr = m->mmu.alloc;
+  assert(addr >= m->mmu.base);
+  int64_t incr = (int64_t)addr - m->mmu.alloc;
+  mmu_alloc(&m->mmu, incr);
+  return addr;
+}
+
 static syscall_t syscall_table[] = {
-    [SYS_exit] = sys_unimplemented,
+    [SYS_exit] = sys_exit,
     [SYS_exit_group] = sys_unimplemented,
     [SYS_read] = sys_unimplemented,
     [SYS_pread] = sys_unimplemented,
-    [SYS_write] = sys_unimplemented,
+    [SYS_write] = sys_write,
     [SYS_openat] = sys_unimplemented,
-    [SYS_close] = sys_unimplemented,
+    [SYS_close] = sys_close,
     [SYS_fstat] = sys_fstat,
     [SYS_statx] = sys_unimplemented,
     [SYS_lseek] = sys_unimplemented,
@@ -100,7 +130,7 @@ static syscall_t syscall_table[] = {
     [SYS_mkdirat] = sys_unimplemented,
     [SYS_renameat] = sys_unimplemented,
     [SYS_getcwd] = sys_unimplemented,
-    [SYS_brk] = sys_unimplemented,
+    [SYS_brk] = sys_brk,
     [SYS_uname] = sys_unimplemented,
     [SYS_getpid] = sys_unimplemented,
     [SYS_getuid] = sys_unimplemented,
