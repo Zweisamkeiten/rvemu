@@ -128,8 +128,8 @@ void exec_block_interp(state_t *state) {
     state->gp_regs[zero] = 0;
 
     // syscall
-    // if (inst.cont)
-    //   break;
+    if (inst.cont)
+      break;
 
     state->pc += inst.rvc ? 2 : 4;
   }

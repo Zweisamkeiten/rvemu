@@ -15,16 +15,21 @@
  */
 enum exit_reason_t machine_step(machine_t *m) {
   while (true) {
+    m->state.exit_reason = none;
     exec_block_interp(&m->state);
+    Assert(m->state.exit_reason != none,
+           "exec block interp exit reason is None");
 
     if (m->state.exit_reason == indirect_branch ||
         m->state.exit_reason == direct_branch) {
+      m->state.pc = m->state.reenter_pc;
       continue;
     }
 
     break;
   }
 
+  m->state.pc = m->state.reenter_pc;
   Assert(m->state.exit_reason == ecall, "machine exit reason is not ecall");
   return ecall;
 }
