@@ -49,3 +49,27 @@ void machine_load_program(machine_t *m, const char *prog) {
 
   m->state.pc = (uint64_t)m->mmu.entry;
 }
+
+void machine_setup(machine_t *m, int argc, char *argv[]) {
+  size_t stack_size = 32 * 1024 * 1024;
+  uint64_t stack = mmu_alloc(&m->mmu, stack_size);
+  m->state.gp_regs[sp] = stack + stack_size;
+
+  m->state.gp_regs[sp] -= 8; // auxv
+  m->state.gp_regs[sp] -= 8; // envp
+  m->state.gp_regs[sp] -= 8; // argv end
+
+  uint64_t args = argc - 1;
+
+  for (int i = args; i > 0; i--) {
+    size_t len = strlen(argv[i]);
+
+    uint64_t addr = mmu_alloc(&m->mmu, len + 1);
+    mmu_write(addr, (uint8_t *)argv[i], len);
+    m->state.gp_regs[sp] -= 8; // argv[i]
+    mmu_write(m->state.gp_regs[sp], (uint8_t *)&addr, sizeof(uint64_t));
+  }
+
+  m->state.gp_regs[sp] -= 8; // argc
+  mmu_write(m->state.gp_regs[sp], (uint8_t *)&args, sizeof(uint64_t));
+}

@@ -101,3 +101,38 @@ void mmu_load_elf(mmu_t *mmu, int fd) {
     }
   }
 }
+
+/**
+ * @brief mmu_alloc 申请释放内存
+ *
+ * @param mmu
+ * @param size 有符号数, 为负释放内存
+ * @return
+ */
+uint64_t mmu_alloc(mmu_t *mmu, int64_t size) {
+  int page_size = getpagesize();
+  uint64_t base = mmu->alloc;
+  Assert(base >= mmu->base, "alloc cant be smaller than mmu base");
+
+  mmu->alloc += size;
+  Assert(mmu->alloc >= mmu->base, "alloc cant be smaller than mmu base");
+
+  if (size > 0 && mmu->alloc > HOST_TO_GUEST(mmu->host_alloc)) {
+    if (mmap((void *)mmu->host_alloc, ROUNDUP(size, page_size),
+             PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1,
+             0) == MAP_FAILED) {
+      panic("mmap failed");
+    }
+
+    mmu->host_alloc += ROUNDUP(size, page_size);
+  } else if (size < 0 &&
+             ROUNDUP(mmu->alloc, page_size) < HOST_TO_GUEST(mmu->host_alloc)) {
+    uint64_t len =
+        HOST_TO_GUEST(mmu->host_alloc) - ROUNDUP(mmu->alloc, page_size);
+    if (munmap((void *)mmu->host_alloc, len) == -1)
+      fatal(strerror(errno));
+    mmu->host_alloc -= len;
+  }
+
+  return base;
+}

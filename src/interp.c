@@ -4,6 +4,7 @@
  */
 
 #include "decode.h"
+#include "interp_util.h"
 #include "rvemu.h"
 
 const char *inst_name[] = {
@@ -80,34 +81,207 @@ const char *inst_name[] = {
     "inst_fmv_x_d",   "inst_fcvt_d_l",  "inst_fcvt_d_lu", "inst_fmv_d_x",
 };
 
-static void func_empty(state_t *state, inst_t *inst) {}
+static void func_empty(state_t *state, inst_t *inst) { panic("unimplement"); }
+
+#define FUNC_LOAD(inst, typ)                                                   \
+  static void func_##inst(state_t *state, inst_t *inst) {                      \
+    uint64_t addr = state->gp_regs[inst->rs1] + (int64_t)inst->imm;            \
+    state->gp_regs[inst->rd] = *(typ *)GUEST_TO_HOST(addr);                    \
+  }
+
+FUNC_LOAD(lb, int8_t);
+FUNC_LOAD(lh, int16_t);
+FUNC_LOAD(lw, int32_t);
+FUNC_LOAD(ld, int64_t);
+FUNC_LOAD(lbu, uint8_t);
+FUNC_LOAD(lhu, uint16_t);
+FUNC_LOAD(lwu, uint32_t);
+
+#define FUNC_ALUI(inst, expr)                                                  \
+  static void func_##inst(state_t *state, inst_t *inst) {                      \
+    uint64_t rs1 = state->gp_regs[inst->rs1];                                  \
+    int64_t imm = (int64_t)inst->imm;                                          \
+    state->gp_regs[inst->rd] = (expr);                                         \
+  }
+
+FUNC_ALUI(addi, rs1 + imm);
+FUNC_ALUI(slli, rs1 << (imm & 0x3f));
+FUNC_ALUI(slti, (int64_t)rs1 << (int64_t)imm);
+FUNC_ALUI(sltiu, (uint64_t)rs1 << (uint64_t)imm);
+FUNC_ALUI(xori, rs1 &imm);
+FUNC_ALUI(srli, (uint64_t)rs1 >> (uint64_t)(imm & 0x3f));
+FUNC_ALUI(srai, (int64_t)rs1 >> (int64_t)(imm & 0x3f));
+FUNC_ALUI(ori, rs1 | (uint64_t)imm);
+FUNC_ALUI(andi, rs1 &(uint64_t)imm);
+FUNC_ALUI(addiw, (int64_t)(int32_t)(rs1 + imm));
+FUNC_ALUI(slliw, (int64_t)(int32_t)(rs1 << (imm & 0x1f)));
+FUNC_ALUI(srliw, (int64_t)(int32_t)((uint32_t)rs1 >> (imm & 0x1f)));
+FUNC_ALUI(sraiw, (int64_t)((int32_t)rs1 >> (imm & 0x1f)));
+
+static void func_auipc(state_t *state, inst_t *inst) {
+  uint64_t val = state->pc + (int64_t)inst->imm;
+  state->gp_regs[inst->rd] = val;
+}
+
+#define FUNC_STORE(inst, typ)                                                  \
+  static void func_##inst(state_t *state, inst_t *inst) {                      \
+    uint64_t rs1 = state->gp_regs[inst->rs1];                                  \
+    uint64_t rs2 = state->gp_regs[inst->rs2];                                  \
+    printf("%llx\n", GUEST_TO_HOST(rs1 + inst->imm));                           \
+    *(typ *)GUEST_TO_HOST(rs1 + inst->imm) = (typ)rs2;                         \
+  }
+
+FUNC_STORE(sb, uint8_t);
+FUNC_STORE(sh, uint16_t);
+FUNC_STORE(sw, uint32_t);
+FUNC_STORE(sd, uint64_t);
+
+#define FUNC_ALU(inst, expr)                                                   \
+  static void func_##inst(state_t *state, inst_t *inst) {                      \
+    uint64_t rs1 = state->gp_regs[inst->rs1];                                  \
+    uint64_t rs2 = state->gp_regs[inst->rs2];                                  \
+    state->gp_regs[inst->rd] = (expr);                                         \
+  }
+
+FUNC_ALU(add, rs1 + rs2);
+FUNC_ALU(sll, rs1 << (rs2 & 0x3f));
+FUNC_ALU(slt, (int64_t)rs1 < (int64_t)rs2);
+FUNC_ALU(sltu, (uint64_t)rs1 < (uint64_t)rs2);
+FUNC_ALU(xor, rs1 ^ rs2);
+FUNC_ALU(srl, rs1 >> (rs2 & 0x3f));
+FUNC_ALU(or, rs1 | rs2);
+FUNC_ALU(and, rs1 &rs2);
+
+FUNC_ALU(mul, rs1 *rs2);
+FUNC_ALU(mulh, mulh_helper(rs1, rs2));
+FUNC_ALU(mulhsu, mulhsu_helper(rs1, rs2));
+FUNC_ALU(mulhu, mulhu_helper(rs1, rs2));
+
+FUNC_ALU(sub, rs1 - rs2);
+FUNC_ALU(sra, (int64_t)rs1 >> (rs2 & 0x3f));
+FUNC_ALU(remu, rs2 == 0 ? rs1 : rs1 % rs2);
+FUNC_ALU(addw, (int64_t)(int32_t)(rs1 + rs2));
+FUNC_ALU(sllw, (int64_t)(int32_t)(rs1 << (rs2 & 0x1f)));
+FUNC_ALU(srlw, (int64_t)(int32_t)((uint32_t)rs1 >> (rs2 & 0x1f)));
+FUNC_ALU(mulw, (int64_t)(int32_t)(rs1 *rs2));
+FUNC_ALU(divw, rs2 == 0
+                   ? UINT64_MAX
+                   : (int32_t)((int64_t)(int32_t)rs1 / (int64_t)(int32_t)rs2));
+FUNC_ALU(divuw,
+         rs2 == 0 ? UINT64_MAX : (int32_t)((uint32_t)rs1 / (uint32_t)rs2));
+FUNC_ALU(remw, rs2 == 0 ? (int64_t)(int32_t)rs1
+                        : (int64_t)(int32_t)((int64_t)(int32_t)rs1 %
+                                             (int64_t)(int32_t)rs2));
+FUNC_ALU(remuw, rs2 == 0 ? (int64_t)(int32_t)(uint32_t)rs1
+                         : (int64_t)(int32_t)((uint32_t)rs1 % (uint32_t)rs2));
+FUNC_ALU(subw, (int64_t)(int32_t)(rs1 - rs2));
+FUNC_ALU(sraw, (int64_t)(int32_t)((int32_t)rs1 >> (rs2 & 0x1f)));
+
+#define FUNC_BR(inst, expr)                                                    \
+  static void func_##inst(state_t *state, inst_t *inst) {                      \
+    uint64_t rs1 = state->gp_regs[inst->rs1];                                  \
+    uint64_t rs2 = state->gp_regs[inst->rs2];                                  \
+    uint64_t target_addr = state->pc + (int64_t)inst->imm;                     \
+    if (expr) {                                                                \
+      state->reenter_pc = state->pc = target_addr;                             \
+      state->exit_reason = direct_branch;                                      \
+      inst->cont = true;                                                       \
+    }                                                                          \
+  }
+
+FUNC_BR(beq, (uint64_t)rs1 == (uint64_t)rs2);
+FUNC_BR(bne, (uint64_t)rs1 != (uint64_t)rs2);
+FUNC_BR(blt, (int64_t)rs1 < (int64_t)rs2);
+FUNC_BR(bge, (int64_t)rs1 >= (int64_t)rs2);
+FUNC_BR(bltu, (uint64_t)rs1 < (uint64_t)rs2);
+FUNC_BR(bgeu, (uint64_t)rs1 > -(uint64_t)rs2);
+
+static void func_jalr(state_t *state, inst_t *inst) {
+  uint64_t rs1 = state->gp_regs[inst->rs1];
+  state->gp_regs[inst->rd] = state->pc + (inst->rvc ? 2 : 4);
+  state->exit_reason = indirect_branch;
+  state->reenter_pc = (rs1 + (int64_t)inst->imm) & ~(uint64_t)1;
+}
+
+static void func_jal(state_t *state, inst_t *inst) {
+  state->gp_regs[inst->rd] = state->pc + (inst->rvc ? 2 : 4);
+  state->reenter_pc = state->pc = state->pc + (int64_t)inst->imm;
+  state->exit_reason = direct_branch;
+}
+
+static void func_ecall(state_t *state, inst_t *inst) {
+  state->exit_reason = ecall;
+  state->reenter_pc = state->pc + 4;
+}
 
 typedef void(func_t)(state_t *, inst_t *);
 
 static func_t *funcs[] = {
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty, func_empty, func_empty, func_empty,
-    func_empty};
+    func_lb,    func_lh,    func_lw,     func_ld,    func_lbu,   func_lhu,
+    func_lwu,
+
+    func_empty, func_empty,
+
+    func_addi,  func_slli,  func_slti,   func_sltiu, func_xori,  func_srli,
+    func_srai,  func_ori,   func_andi,   func_auipc, func_addiw, func_slliw,
+    func_srliw, func_sraiw,
+
+    func_sb,    func_sh,    func_sw,     func_sd,
+
+    func_add,   func_sll,   func_slt,    func_sltu,  func_xor,   func_srl,
+    func_or,    func_and,
+
+    func_mul,   func_mulh,  func_mulhsu, func_mulhu, func_empty, func_remu,
+    func_empty, func_empty,
+
+    func_sub,   func_sra,   func_empty,
+
+    func_addw,  func_sllw,  func_srlw,   func_mulw,  func_divw,  func_divuw,
+    func_remw,  func_remuw, func_subw,   func_sraw,
+
+    func_beq,   func_bne,   func_blt,    func_bge,   func_bltu,  func_bgeu,
+
+    func_jalr,  func_jal,   func_ecall,  func_empty,
+
+    func_empty, func_empty, func_empty,  func_empty, func_empty, func_empty,
+
+    func_empty, func_empty,
+
+    func_empty, func_empty, func_empty,  func_empty, func_empty, func_empty,
+    func_empty, func_empty, func_empty,
+
+    func_empty, func_empty, func_empty,
+
+    func_empty, func_empty,
+
+    func_empty, func_empty, func_empty,
+
+    func_empty, func_empty, func_empty,  func_empty,
+
+    func_empty, func_empty, func_empty,  func_empty, func_empty,
+
+    func_empty, func_empty,
+
+    func_empty, func_empty,
+
+    func_empty, func_empty, func_empty,  func_empty,
+
+    func_empty, func_empty, func_empty,  func_empty, func_empty,
+
+    func_empty, func_empty, func_empty,
+
+    func_empty, func_empty,
+
+    func_empty, func_empty,
+
+    func_empty, func_empty, func_empty,  func_empty,
+
+    func_empty, func_empty, func_empty,  func_empty,
+
+    func_empty, func_empty,
+
+    func_empty, func_empty, func_empty,  func_empty,
+};
 
 /**
  * @brief exec until a branch or syscall come
@@ -118,12 +292,13 @@ void exec_block_interp(state_t *state) {
   static inst_t inst = {0};
 
   while (true) {
+    printf("pc: %lx\n", state->pc);
     uint32_t data = *(uint32_t *)GUEST_TO_HOST(state->pc);
-    // printf("%lx\n", state->pc);
     inst_decode(&inst, data);
     IFDEF(CONFIG_DEBUG, printf("data: %#010x\n", data));
     IFDEF(CONFIG_DEBUG, fprintf(stderr, "inst: %s\n", inst_name[inst.type]));
 
+    printf("%s\n", inst_name[inst.type]);
     funcs[inst.type](state, &inst);
     state->gp_regs[zero] = 0;
 

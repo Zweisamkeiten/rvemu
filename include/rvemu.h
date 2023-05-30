@@ -3,7 +3,7 @@
 
 #include "common.h"
 
-#define CONFIG_DEBUG 1
+// #define CONFIG_DEBUG 1
 
 enum inst_type_t {
   inst_lb,
@@ -180,7 +180,7 @@ typedef struct {
   int32_t imm;
   int16_t csr;
   enum inst_type_t type;
-  bool rvc; // 压缩指令
+  bool rvc;  // 压缩指令
   bool cont; // 继续执行
 } inst_t;
 
@@ -225,5 +225,6 @@ typedef struct {
 
 enum exit_reason_t machine_step(machine_t *m);
 void machine_load_program(machine_t *m, const char *prog);
+void machine_setup(machine_t *m, int argc, char *argv[]);
 
 #endif
