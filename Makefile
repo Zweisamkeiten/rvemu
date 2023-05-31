@@ -36,6 +36,8 @@ DISTCLEAN_LIST := $(OBJ) \
                   $(OBJ_DEBUG)
 CLEAN_LIST := $(RUN) \
 				$(RUN_DEBUG) \
+				$(OBJ) \
+				$(OBJ_DEBUG) \
 				$(TARGET) \
 			  $(TARGET_DEBUG) \
 			  $(DISTCLEAN_LIST)
