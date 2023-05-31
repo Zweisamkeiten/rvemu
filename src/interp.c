@@ -264,73 +264,109 @@ static void func_fld(state_t *state, inst_t *inst) {
   state->fp_regs[inst->rd].v = *(uint64_t *)GUEST_TO_HOST(addr);
 }
 
+#define FUNC_FSGNJS(inst, v0, v1)                                              \
+  static void func_fsgnj##inst(state_t *state, inst_t *inst) {                 \
+    uint32_t rs1 = state->fp_regs[inst->rs1].w;                                \
+    uint32_t rs2 = state->fp_regs[inst->rs2].w;                                \
+    state->fp_regs[inst->rd].v =                                               \
+        (uint64_t)fsgnj32(rs1, rs2, v0, v1) | ((uint64_t)-1 << 32);            \
+  }
+
+FUNC_FSGNJS(_s, false, false);
+FUNC_FSGNJS(n_s, true, false);
+FUNC_FSGNJS(x_s, false, true);
+
+#define FUNC_FSGNJD(inst, v0, v1)                                              \
+  static void func_fsgnj##inst(state_t *state, inst_t *inst) {                 \
+    uint64_t rs1 = state->fp_regs[inst->rs1].v;                                \
+    uint64_t rs2 = state->fp_regs[inst->rs2].v;                                \
+    state->fp_regs[inst->rd].v = fsgnj64(rs1, rs2, v0, v1);                    \
+  }
+
+FUNC_FSGNJD(_d, false, false);
+FUNC_FSGNJD(n_d, true, false);
+FUNC_FSGNJD(x_d, false, true);
+
+#define FUNC_FBR_D(inst, expr)                                                 \
+  static void func_##inst(state_t *state, inst_t *inst) {                      \
+    double rs1 = state->fp_regs[inst->rs1].d;                                  \
+    double rs2 = state->fp_regs[inst->rs2].d;                                  \
+    state->gp_regs[inst->rd] = (expr);                                         \
+  }
+
+FUNC_FBR_D(feq_d, rs1 == rs2);
+FUNC_FBR_D(flt_d, rs1 < rs2);
+FUNC_FBR_D(fle_d, rs1 <= rs2);
+
 typedef void(func_t)(state_t *, inst_t *);
 
 static func_t *funcs[] = {
-    func_lb,    func_lh,    func_lw,     func_ld,    func_lbu,   func_lhu,
-    func_lwu,
+    func_lb,      func_lh,       func_lw,       func_ld,    func_lbu,
+    func_lhu,     func_lwu,
 
-    func_empty, func_empty,
+    func_empty,   func_empty,
 
-    func_addi,  func_slli,  func_slti,   func_sltiu, func_xori,  func_srli,
-    func_srai,  func_ori,   func_andi,   func_auipc, func_addiw, func_slliw,
-    func_srliw, func_sraiw,
+    func_addi,    func_slli,     func_slti,     func_sltiu, func_xori,
+    func_srli,    func_srai,     func_ori,      func_andi,  func_auipc,
+    func_addiw,   func_slliw,    func_srliw,    func_sraiw,
 
-    func_sb,    func_sh,    func_sw,     func_sd,
+    func_sb,      func_sh,       func_sw,       func_sd,
 
-    func_add,   func_sll,   func_slt,    func_sltu,  func_xor,   func_srl,
-    func_or,    func_and,
+    func_add,     func_sll,      func_slt,      func_sltu,  func_xor,
+    func_srl,     func_or,       func_and,
 
-    func_mul,   func_mulh,  func_mulhsu, func_mulhu, func_div,   func_divu,
-    func_empty, func_remu,
+    func_mul,     func_mulh,     func_mulhsu,   func_mulhu, func_div,
+    func_divu,    func_empty,    func_remu,
 
-    func_sub,   func_sra,   func_lui,
+    func_sub,     func_sra,      func_lui,
 
-    func_addw,  func_sllw,  func_srlw,   func_mulw,  func_divw,  func_divuw,
-    func_remw,  func_remuw, func_subw,   func_sraw,
+    func_addw,    func_sllw,     func_srlw,     func_mulw,  func_divw,
+    func_divuw,   func_remw,     func_remuw,    func_subw,  func_sraw,
 
-    func_beq,   func_bne,   func_blt,    func_bge,   func_bltu,  func_bgeu,
+    func_beq,     func_bne,      func_blt,      func_bge,   func_bltu,
+    func_bgeu,
 
-    func_jalr,  func_jal,   func_ecall,  func_empty,
+    func_jalr,    func_jal,      func_ecall,    func_empty,
 
-    func_empty, func_empty, func_empty,  func_empty, func_empty, func_empty,
+    func_empty,   func_empty,    func_empty,    func_empty, func_empty,
+    func_empty,
 
-    func_flw,   func_fsw,
+    func_flw,     func_fsw,
 
-    func_empty, func_empty, func_empty,  func_empty, func_empty, func_empty,
-    func_empty, func_empty, func_empty,
+    func_empty,   func_empty,    func_empty,    func_empty, func_empty,
+    func_empty,   func_empty,    func_empty,    func_empty,
 
-    func_empty, func_empty, func_empty,
+    func_fsgnj_s, func_fsgnjn_s, func_fsgnjx_s,
 
-    func_empty, func_empty,
+    func_empty,   func_empty,
 
-    func_empty, func_empty, func_empty,
+    func_empty,   func_empty,    func_empty,
 
-    func_empty, func_empty, func_empty,  func_empty,
+    func_empty,   func_empty,    func_empty,    func_empty,
 
-    func_empty, func_empty, func_empty,  func_empty, func_empty,
+    func_empty,   func_empty,    func_empty,    func_empty, func_empty,
 
-    func_empty, func_empty,
+    func_empty,   func_empty,
 
-    func_fld,   func_fsd,
+    func_fld,     func_fsd,
 
-    func_empty, func_empty, func_empty,  func_empty,
+    func_empty,   func_empty,    func_empty,    func_empty,
 
-    func_empty, func_empty, func_empty,  func_empty, func_empty,
+    func_empty,   func_empty,    func_empty,    func_empty, func_empty,
 
-    func_empty, func_empty, func_empty,
+    func_fsgnj_d, func_fsgnjn_d, func_fsgnjx_d,
 
-    func_empty, func_empty,
+    func_empty,   func_empty,
 
-    func_empty, func_empty,
+    func_empty,   func_empty,
 
-    func_empty, func_empty, func_empty,  func_empty,
+    func_feq_d,   func_flt_d,    func_fle_d,    func_empty,
 
-    func_empty, func_empty, func_empty,  func_empty,
+    func_empty,   func_empty,    func_empty,    func_empty,
 
-    func_empty, func_empty,
+    func_empty,   func_empty,
 
-    func_empty, func_empty, func_empty,  func_empty,
+    func_empty,   func_empty,    func_empty,    func_empty,
 };
 
 /**

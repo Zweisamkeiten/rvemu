@@ -113,6 +113,16 @@ static uint64_t sys_brk(machine_t *m) {
   return addr;
 }
 
+static uint64_t sys_gettimeofday(machine_t *m) {
+  GET(a0, tp_addr);
+  GET(a1, tzp_addr);
+  struct timeval *tp = (struct timeval *)GUEST_TO_HOST(tp_addr);
+  void *tzp = NULL;
+  if (tzp_addr != 0)
+    tzp = (void *)GUEST_TO_HOST(tzp_addr);
+  return gettimeofday(tp, tzp);
+}
+
 static syscall_t syscall_table[] = {
     [SYS_exit] = sys_exit,
     [SYS_exit_group] = sys_unimplemented,
@@ -144,7 +154,7 @@ static syscall_t syscall_table[] = {
     [SYS_mremap] = sys_unimplemented,
     [SYS_mprotect] = sys_unimplemented,
     [SYS_rt_sigaction] = sys_unimplemented,
-    [SYS_gettimeofday] = sys_unimplemented,
+    [SYS_gettimeofday] = sys_gettimeofday,
     [SYS_times] = sys_unimplemented,
     [SYS_writev] = sys_unimplemented,
     [SYS_faccessat] = sys_unimplemented,
