@@ -255,12 +255,13 @@ FUNC_FSTORE(fsw, uint32_t);
 FUNC_FSTORE(fsd, uint32_t);
 
 static void func_flw(state_t *state, inst_t *inst) {
-    uint64_t addr = state->gp_regs[inst->rs1] + (int64_t)inst->imm;
-    state->fp_regs[inst->rd].v = *(uint32_t *)GUEST_TO_HOST(addr) | ((uint64_t)-1 << 32);
+  uint64_t addr = state->gp_regs[inst->rs1] + (int64_t)inst->imm;
+  state->fp_regs[inst->rd].v =
+      *(uint32_t *)GUEST_TO_HOST(addr) | ((uint64_t)-1 << 32);
 }
 static void func_fld(state_t *state, inst_t *inst) {
-    uint64_t addr = state->gp_regs[inst->rs1] + (int64_t)inst->imm;
-    state->fp_regs[inst->rd].v = *(uint64_t *)GUEST_TO_HOST(addr);
+  uint64_t addr = state->gp_regs[inst->rs1] + (int64_t)inst->imm;
+  state->fp_regs[inst->rd].v = *(uint64_t *)GUEST_TO_HOST(addr);
 }
 
 typedef void(func_t)(state_t *, inst_t *);
@@ -294,7 +295,7 @@ static func_t *funcs[] = {
 
     func_empty, func_empty, func_empty,  func_empty, func_empty, func_empty,
 
-    func_flw, func_fsw,
+    func_flw,   func_fsw,
 
     func_empty, func_empty, func_empty,  func_empty, func_empty, func_empty,
     func_empty, func_empty, func_empty,
@@ -311,7 +312,7 @@ static func_t *funcs[] = {
 
     func_empty, func_empty,
 
-    func_fld, func_fsd,
+    func_fld,   func_fsd,
 
     func_empty, func_empty, func_empty,  func_empty,
 
