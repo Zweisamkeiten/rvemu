@@ -97,6 +97,13 @@ static uint64_t sys_write(machine_t *m) {
   return write(fd, (void *)GUEST_TO_HOST(ptr), (size_t)len);
 }
 
+static uint64_t sys_read(machine_t *m) {
+  GET(a0, fd);
+  GET(a1, buf);
+  GET(a2, count);
+  return read(fd, (void *)GUEST_TO_HOST(buf), (size_t)count);
+}
+
 static uint64_t sys_fstat(machine_t *m) {
   GET(a0, fd);
   GET(a1, addr);
@@ -126,7 +133,7 @@ static uint64_t sys_gettimeofday(machine_t *m) {
 static syscall_t syscall_table[] = {
     [SYS_exit] = sys_exit,
     [SYS_exit_group] = sys_unimplemented,
-    [SYS_read] = sys_unimplemented,
+    [SYS_read] = sys_read,
     [SYS_pread] = sys_unimplemented,
     [SYS_write] = sys_write,
     [SYS_openat] = sys_unimplemented,
