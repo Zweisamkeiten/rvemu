@@ -1,4 +1,4 @@
-# Qemu RVgcpt
+# RVEMU JIT
 
 ## Usage:
 
@@ -13,10 +13,4 @@ make run
 
 ```shell
 make debug
-```
-
-### test
-
-```shell
-make run < test/test
 ```
