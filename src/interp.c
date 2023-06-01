@@ -388,7 +388,7 @@ void exec_block_interp(state_t *state) {
     funcs[inst.type](state, &inst);
     state->gp_regs[zero] = 0;
 
-    // syscall
+    // syscall || branch || jump with reenter_pc
     if (inst.cont)
       break;
 

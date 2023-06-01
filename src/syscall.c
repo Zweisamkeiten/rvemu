@@ -110,6 +110,16 @@ static uint64_t sys_fstat(machine_t *m) {
   return fstat(fd, (struct stat *)GUEST_TO_HOST(addr));
 }
 
+// static uint64_t sys_gettimeofday(machine_t *m) {
+//   GET(a0, tv_addr);
+//   GET(a1, tz_addr);
+//   struct timeval *tv = (struct timeval *)GUEST_TO_HOST(tv_addr);
+//   struct timezone *tz = NULL;
+//   if (tz_addr != 0)
+//     tz = (struct timezone *)GUEST_TO_HOST(tz_addr);
+//   return gettimeofday(tv, tz);
+// }
+
 static uint64_t sys_brk(machine_t *m) {
   GET(a0, addr);
   if (addr == 0)

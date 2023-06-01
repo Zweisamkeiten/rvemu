@@ -20,6 +20,8 @@
 #define PF_W 0x2
 #define PF_R 0x4
 
+#define R_X86_64_PC32 2
+
 typedef struct {
   unsigned char e_ident[EI_NIDENT];
   uint16_t e_type;
@@ -47,5 +49,34 @@ typedef struct {
   uint64_t p_memsz;
   uint64_t p_align;
 } elf64_phdr_t;
+
+typedef struct {
+  uint32_t sh_name;
+  uint32_t sh_type;
+  uint32_t sh_flags;
+  uint64_t sh_addr;
+  uint64_t sh_offset;
+  uint64_t sh_size;
+  uint32_t sh_link;
+  uint32_t sh_info;
+  uint64_t sh_addralign;
+  uint64_t sh_entsize;
+} elf64_shdr_t;
+
+typedef struct {
+  uint32_t st_name;
+  uint8_t st_info;
+  uint8_t st_other;
+  uint16_t st_shndx;
+  uint64_t st_value;
+  uint64_t st_size;
+} elf64_sym_t;
+
+typedef struct {
+  uint64_t r_offset;
+  uint32_t r_type;
+  uint32_t r_sym;
+  int64_t r_addend;
+} elf64_rela_t;
 
 #endif

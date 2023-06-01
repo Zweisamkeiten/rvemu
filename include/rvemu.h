@@ -201,11 +201,14 @@ enum exit_reason_t {
   none,
   direct_branch,
   indirect_branch,
+  interp,
   ecall,
 };
 
+#include "cache.h"
 #include "elfdef.h"
 #include "reg.h"
+#include "str.h"
 
 typedef struct {
   enum exit_reason_t exit_reason;
@@ -221,22 +224,28 @@ typedef struct {
 typedef struct {
   state_t state;
   mmu_t mmu;
+  cache_t *cache;
 } machine_t;
+
+typedef void (*exec_block_func_t)(state_t *);
 
 enum exit_reason_t machine_step(machine_t *m);
 void machine_load_program(machine_t *m, const char *prog);
 void machine_setup(machine_t *m, int argc, char *argv[]);
 
 inline uint64_t machine_get_gp_reg(machine_t *m, int32_t reg) {
-    Assert(reg >=0 && reg <= num_gp_regs, "reg index should >= 0 & <= 31");
-    return m->state.gp_regs[reg];
+  Assert(reg >= 0 && reg <= num_gp_regs, "reg index should >= 0 & <= 31");
+  return m->state.gp_regs[reg];
 }
 
 inline void machine_set_gp_reg(machine_t *m, int32_t reg, uint64_t data) {
-    Assert(reg >=0 && reg <= num_gp_regs, "reg index should >= 0 & <= 31");
-    m->state.gp_regs[reg] = data;
+  Assert(reg >= 0 && reg <= num_gp_regs, "reg index should >= 0 & <= 31");
+  m->state.gp_regs[reg] = data;
 }
 
 uint64_t do_syscall(machine_t *m, uint64_t n);
+
+str_t machine_genblock(machine_t *m);
+uint8_t *machine_compile(machine_t *m, str_t source);
 
 #endif
