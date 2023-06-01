@@ -5,7 +5,7 @@ default: makedir all
 CC := clang
 CFLAGS := -O3 -Wall -Werror -MMD
 LINKLIB := -lm
-DBGFLAGS := -g -fsanitize=address
+DBGFLAGS := -g
 
 # path macros
 BIN_PATH := bin
@@ -29,7 +29,10 @@ TARGET_DEBUG := $(DBG_PATH)/$(TARGET_NAME)
 # src files & obj files
 SRC := $(foreach x, $(SRC_PATH), $(wildcard $(addprefix $(x)/*,.c*)))
 OBJ := $(addprefix $(OBJ_PATH)/, $(addsuffix .o, $(notdir $(basename $(SRC)))))
+DEP := $(addprefix $(OBJ_PATH)/, $(addsuffix .d, $(notdir $(basename $(SRC)))))
 OBJ_DEBUG := $(addprefix $(DBG_PATH)/, $(addsuffix .o, $(notdir $(basename $(SRC)))))
+OBJ_NOLINKDEBUG = $(addprefix $(DBG_PATH)/, $(addsuffix .i, $(notdir $(basename $(SRC)))))
+DEP += $(addprefix $(DBG_PATH)/, $(addsuffix .d, $(notdir $(basename $(SRC)))))
 
 # clean files list
 DISTCLEAN_LIST := $(OBJ) \
@@ -37,7 +40,9 @@ DISTCLEAN_LIST := $(OBJ) \
 CLEAN_LIST := $(RUN) \
 				$(RUN_DEBUG) \
 				$(OBJ) \
+				$(DEP) \
 				$(OBJ_DEBUG) \
+				$(OBJ_NOLINKDEBUG) \
 				$(TARGET) \
 			  $(TARGET_DEBUG) \
 			  $(DISTCLEAN_LIST)
@@ -63,7 +68,7 @@ $(DBG_PATH)/%.o: $(SRC_PATH)/%.c*
 
 $(TARGET_DEBUG): $(OBJ_DEBUG)
 	@echo + LD $@
-	$(CC) $(CFLAGS) $(DBGFLAGS) $(OBJ_DEBUG) -o $@
+	$(CC) $(CFLAGS) $(DBGFLAGS) $(OBJ_DEBUG) $(LINKLIB) -o $@
 	cp $@ $(RUN_DEBUG)
 
 MAIN_EXEC := $(RUN)
