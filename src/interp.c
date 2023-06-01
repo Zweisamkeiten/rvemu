@@ -108,7 +108,7 @@ FUNC_ALUI(addi, rs1 + imm);
 FUNC_ALUI(slli, rs1 << (imm & 0x3f));
 FUNC_ALUI(slti, (int64_t)rs1 << (int64_t)imm);
 FUNC_ALUI(sltiu, (uint64_t)rs1 << (uint64_t)imm);
-FUNC_ALUI(xori, rs1 &imm);
+FUNC_ALUI(xori, rs1 ^ imm);
 FUNC_ALUI(srli, (uint64_t)rs1 >> (uint64_t)(imm & 0x3f));
 FUNC_ALUI(srai, (int64_t)rs1 >> (int64_t)(imm & 0x3f));
 FUNC_ALUI(ori, rs1 | (uint64_t)imm);
